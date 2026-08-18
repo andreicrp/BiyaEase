@@ -65,6 +65,7 @@ const DEFAULT_METRO_MANILA_REGION: MapRegion = {
 };
 
 const TILE_SIZE = 256;
+const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
 
 export const MapView: React.FC<MapViewProps> = ({
   initialRegion = DEFAULT_METRO_MANILA_REGION,
@@ -135,7 +136,7 @@ export const MapView: React.FC<MapViewProps> = ({
     return Math.max(11, Math.min(18, z));
   }, [currentRegion.longitudeDelta]);
 
-  // Web Mercator coordinate calculations
+  // Web Mercator calculations
   const numTiles = useMemo(() => Math.pow(2, zoomLevel), [zoomLevel]);
 
   const lat2tileY = (lat: number): number => {
@@ -167,7 +168,7 @@ export const MapView: React.FC<MapViewProps> = ({
     return { x: px, y: py };
   };
 
-  // Generate visible cartography map tiles (OpenStreetMap / CartoDB)
+  // Generate visible cartography map tiles using CartoDB Voyager CDN
   const visibleTiles = useMemo(() => {
     const minTileX = Math.floor(viewportTopLeftX / TILE_SIZE);
     const maxTileX = Math.floor((viewportTopLeftX + dimensions.width) / TILE_SIZE);
@@ -183,8 +184,9 @@ export const MapView: React.FC<MapViewProps> = ({
         const left = x * TILE_SIZE - viewportTopLeftX;
         const top = y * TILE_SIZE - viewportTopLeftY;
 
-        // OpenStreetMap Cartography tile server
-        const url = `https://tile.openstreetmap.org/${zoomLevel}/${normalizedX}/${y}.png`;
+        // Subdomain load balancing for fast CDN delivery
+        const s = CARTO_SUBDOMAINS[Math.abs(x + y) % CARTO_SUBDOMAINS.length];
+        const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoomLevel}/${normalizedX}/${y}.png`;
 
         tiles.push({
           key: `tile-${zoomLevel}-${normalizedX}-${y}`,
@@ -287,7 +289,7 @@ export const MapView: React.FC<MapViewProps> = ({
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
-      {/* 1. Real Street Cartography Map Tiles */}
+      {/* 1. Real CartoDB Voyager Street Cartography Tiles */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {visibleTiles.map((tile) => (
           <Image
@@ -307,7 +309,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* 2. Attribution Watermark */}
       <View style={styles.attribution} pointerEvents="none">
-        <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+        <Text style={styles.attributionText}>© CARTO © OpenStreetMap</Text>
       </View>
 
       {/* 3. Render PostGIS Route Polylines */}
@@ -447,7 +449,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 6,
     bottom: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 3,
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
   },
   attributionText: {
     fontSize: 8,
-    color: '#64748B',
+    color: '#475569',
     fontWeight: '600',
   },
 });
