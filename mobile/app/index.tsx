@@ -179,6 +179,7 @@ export default function App(): React.JSX.Element {
 
         {activeTab === 'nearby' && (
           <NearbyScreen
+            onOpenSearch={handleOpenSearch}
             onSelectTransport={(_item) => {
               setFlowState('route_options');
             }}
