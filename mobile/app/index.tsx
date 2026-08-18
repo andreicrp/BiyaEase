@@ -256,17 +256,7 @@ function MainApp(): React.JSX.Element {
   );
 }
 
-import { SavedDataProvider } from '../context/SavedDataContext';
-
-export default function App(): React.JSX.Element {
-  return (
-    <SavedDataProvider>
-      <JourneyProvider>
-        <MainApp />
-      </JourneyProvider>
-    </SavedDataProvider>
-  );
-}
+export default MainApp;
 
 const styles = StyleSheet.create({
   mainContainer: {

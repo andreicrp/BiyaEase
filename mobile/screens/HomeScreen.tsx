@@ -215,24 +215,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.section}>
           <Text style={styles.quickLabel}>QUICK DESTINATIONS</Text>
           <View style={styles.quickDestGrid}>
-            {mockSavedPlaces.map((place) => (
-              <TouchableOpacity
-                key={place.id}
-                style={[styles.quickDestCard, shadows.subtle]}
-                onPress={() => onSelectSavedPlace(place)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Go to ${place.name}`}
-              >
-                <Text style={styles.quickIcon}>
-                  {place.type === 'home' ? '🏠' : place.type === 'school' ? '🎓' : '💼'}
-                </Text>
-                <Text style={styles.quickName}>{place.name}</Text>
-                <Text style={styles.quickAddress} numberOfLines={1}>
-                  {place.address}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {displayQuickPlaces.map((place: any) => {
+              const cat = place.category || place.type;
+              const icon = cat === 'home' ? '🏠' : cat === 'work' ? '💼' : cat === 'school' ? '🎓' : '⭐';
+              return (
+                <TouchableOpacity
+                  key={place.id}
+                  style={[styles.quickDestCard, shadows.subtle]}
+                  onPress={() => onSelectSavedPlace(place)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Go to ${place.name}`}
+                >
+                  <Text style={styles.quickIcon}>{icon}</Text>
+                  <Text style={styles.quickName}>{place.name}</Text>
+                  <Text style={styles.quickAddress} numberOfLines={1}>
+                    {place.subtitle || place.address || 'Saved Location'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
