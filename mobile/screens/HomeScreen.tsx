@@ -26,6 +26,7 @@ import {
   mockUserProfile,
 } from '../data/mockData';
 import { Destination, SavedPlace, RecentTrip } from '../types/index';
+import { locationService } from '../services/locationService';
 
 interface HomeScreenProps {
   onOpenSearch: () => void;
@@ -54,7 +55,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
 
-  const userLocation = DEFAULT_USER_LOCATION;
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>(() => {
+    const last = locationService.getLastLocation();
+    return last ? { latitude: last.latitude, longitude: last.longitude } : DEFAULT_USER_LOCATION;
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    locationService.getCurrentLocation().then((loc) => {
+      if (loc && isMounted) {
+        setUserLocation({ latitude: loc.latitude, longitude: loc.longitude });
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,7 +95,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [userLocation.latitude, userLocation.longitude]);
 
   const hasActiveJourney =
     activeJourney && activeJourney.status !== 'completed' && activeJourney.status !== 'cancelled';
