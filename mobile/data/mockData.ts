@@ -175,6 +175,7 @@ export const mockNearbyTransport: NearbyTransport[] = [
     distanceMeters: 150,
     etaMinutes: 2,
     stopName: 'University Ave Waiting Shed',
+    coordinates: { latitude: 14.6538, longitude: 121.0685 },
   },
   {
     id: 'nearby-02',
@@ -184,6 +185,7 @@ export const mockNearbyTransport: NearbyTransport[] = [
     distanceMeters: 800,
     etaMinutes: 5,
     stopName: 'Quezon Ave Busway Station',
+    coordinates: { latitude: 14.6425, longitude: 121.0384 },
   },
   {
     id: 'nearby-03',
@@ -193,6 +195,7 @@ export const mockNearbyTransport: NearbyTransport[] = [
     distanceMeters: 1200,
     etaMinutes: 4,
     stopName: 'Quezon Avenue MRT Station',
+    coordinates: { latitude: 14.6427, longitude: 121.0388 },
   },
   {
     id: 'nearby-04',
@@ -202,6 +205,7 @@ export const mockNearbyTransport: NearbyTransport[] = [
     distanceMeters: 320,
     etaMinutes: 3,
     stopName: 'Commonwealth Ave Loading Bay',
+    coordinates: { latitude: 14.6542, longitude: 121.0535 },
   },
   {
     id: 'nearby-05',
@@ -211,6 +215,7 @@ export const mockNearbyTransport: NearbyTransport[] = [
     distanceMeters: 1500,
     etaMinutes: 6,
     stopName: 'Katipunan LRT Station',
+    coordinates: { latitude: 14.6318, longitude: 121.074 },
   },
 ];
 
