@@ -6,18 +6,18 @@ import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { MapView, MapPolylineItem } from '../components/maps/MapView';
-import { RouteTimeline } from '../components/routes/RouteTimeline';
 import { PrimaryButton } from '../components/common/PrimaryButton';
 import { FareBadge } from '../components/common/FareBadge';
 import { TimeBadge } from '../components/common/TimeBadge';
-import { transitApiService, ApiTransitStop } from '../services/transitApiService';
+import { ApiTransitStop } from '../services/transitApiService';
 import { Coordinates } from '../utils/geoUtils';
 import { RouteOption } from '../types/index';
+import { Journey, JourneyMode } from '../types/routing.types';
 
 interface RouteDetailsScreenProps {
-  route: RouteOption;
+  route: Journey | RouteOption;
   onBack: () => void;
-  onStartTrip: (route: RouteOption) => void;
+  onStartTrip: (route: Journey | RouteOption) => void;
 }
 
 export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
@@ -29,63 +29,84 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
   const [routeStops, setRouteStops] = useState<ApiTransitStop[]>([]);
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
 
+  // Extract metadata whether route is Journey or legacy RouteOption
+  const isJourney = 'segments' in route && Array.isArray((route as Journey).segments);
+  const journey = isJourney ? (route as Journey) : null;
+  const legacyOption = !isJourney ? (route as RouteOption) : null;
+
+  const durationMinutes = journey
+    ? journey.durationMinutes
+    : legacyOption?.totalDurationMinutes || 30;
+  const totalFare = journey ? journey.fare : legacyOption?.totalFare || 15;
+  const walkingDistance = journey
+    ? journey.walkingDistanceMeters
+    : legacyOption?.walkingDistanceMeters || 300;
+  const transfersCount = journey ? journey.transfers : legacyOption?.transfersCount || 0;
+  const summaryTitle = journey ? journey.summary : legacyOption?.summary || 'Route Details';
+  const labelText = journey?.label || legacyOption?.label || 'COMMUTE OPTION';
+
   useEffect(() => {
-    let isMounted = true;
-    async function loadRouteGeometry() {
-      // Default corridor points based on route steps
-      const fallbackPoints: Coordinates[] = route.steps
+    if (journey) {
+      // Extract coordinates from all segment LineString geometries
+      const allCoords: Coordinates[] = [];
+      const stops: ApiTransitStop[] = [];
+
+      journey.segments.forEach((seg, sIdx) => {
+        if (seg.geometry && Array.isArray(seg.geometry.coordinates)) {
+          seg.geometry.coordinates.forEach(([lng, lat]) => {
+            allCoords.push({ latitude: lat, longitude: lng });
+          });
+        }
+
+        if (seg.fromStop) {
+          stops.push({
+            id: `stop-from-${sIdx}`,
+            name: seg.fromStop.name,
+            code: seg.fromStop.code || `SEG-${sIdx + 1}`,
+            latitude: seg.fromStop.latitude,
+            longitude: seg.fromStop.longitude,
+            mode: seg.mode,
+          });
+        }
+        if (seg.toStop) {
+          stops.push({
+            id: `stop-to-${sIdx}`,
+            name: seg.toStop.name,
+            code: seg.toStop.code || `ALIGHT-${sIdx + 1}`,
+            latitude: seg.toStop.latitude,
+            longitude: seg.toStop.longitude,
+            mode: seg.mode,
+          });
+        }
+      });
+
+      // If no LineString coords in segments, use stop points
+      if (allCoords.length === 0 && stops.length >= 2) {
+        stops.forEach((s) => allCoords.push({ latitude: s.latitude, longitude: s.longitude }));
+      }
+
+      setRouteCoordinates(allCoords);
+      setRouteStops(stops);
+    } else if (legacyOption) {
+      const fallbackPoints: Coordinates[] = legacyOption.steps
         .filter((s) => s.coordinates)
         .map((s) => s.coordinates!);
-
-      try {
-        const shapeData = await transitApiService.getRouteShape(route.id);
-        if (isMounted && shapeData && shapeData.coordinates.length > 0) {
-          setRouteCoordinates(shapeData.coordinates);
-        } else if (isMounted && fallbackPoints.length >= 2) {
-          setRouteCoordinates(fallbackPoints);
-        }
-
-        const stopsData = await transitApiService.getRouteStops(route.id);
-        if (isMounted && stopsData && stopsData.stops.length > 0) {
-          setRouteStops(
-            stopsData.stops.map((s) => ({
-              id: s.stop_id,
-              name: s.stop_name,
-              code: `SEQ-${s.stop_sequence}`,
-              latitude: s.latitude,
-              longitude: s.longitude,
-              mode: route.steps[0]?.mode || 'bus',
-            }))
-          );
-        } else if (isMounted) {
-          // Construct stops from step landmarks
-          setRouteStops(
-            route.steps.map((s, idx) => ({
-              id: `step-stop-${idx}`,
-              name: s.instructions || s.title,
-              code: `STOP-${idx + 1}`,
-              latitude: 14.6538 + idx * 0.005,
-              longitude: 121.0685 - idx * 0.005,
-              mode: s.mode,
-            }))
-          );
-        }
-      } catch (err) {
-        console.warn('Failed to load route geometry:', err);
-        if (isMounted && fallbackPoints.length >= 2) {
-          setRouteCoordinates(fallbackPoints);
-        }
-      }
+      setRouteCoordinates(fallbackPoints);
+      setRouteStops(
+        legacyOption.steps.map((s, idx) => ({
+          id: `step-stop-${idx}`,
+          name: s.instructions || s.title,
+          code: `STOP-${idx + 1}`,
+          latitude: 14.6538 + idx * 0.005,
+          longitude: 121.0685 - idx * 0.005,
+          mode: s.mode,
+        }))
+      );
     }
-
-    loadRouteGeometry();
-    return () => {
-      isMounted = false;
-    };
-  }, [route]);
+  }, [journey, legacyOption]);
 
   const polyline: MapPolylineItem = {
-    id: `poly-${route.id}`,
+    id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
     coordinates:
       routeCoordinates.length >= 2
         ? routeCoordinates
@@ -96,6 +117,25 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
           ],
     color: colors.primary,
     strokeWidth: 5,
+  };
+
+  const getModeEmoji = (mode: JourneyMode | string): string => {
+    switch (mode) {
+      case 'jeepney':
+        return '🚐';
+      case 'mrt':
+        return '🚆';
+      case 'lrt':
+        return '🚈';
+      case 'bus':
+        return '🚌';
+      case 'uvexpress':
+        return '🚐';
+      case 'tricycle':
+        return '🛺';
+      default:
+        return '🚶';
+    }
   };
 
   return (
@@ -125,40 +165,92 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
         <View style={[styles.summaryCard, shadows.card]}>
           <View style={styles.badgeRow}>
             <View style={styles.labelBadge}>
-              <Text style={styles.labelBadgeText}>{route.label}</Text>
+              <Text style={styles.labelBadgeText}>{labelText}</Text>
             </View>
-            <Text style={styles.summaryTitle}>{route.summary}</Text>
+            <Text style={styles.summaryTitle} numberOfLines={1}>
+              {summaryTitle}
+            </Text>
           </View>
 
           <View style={styles.metricsGrid}>
             <View style={styles.metricItem}>
               <Text style={styles.metricCaption}>EST. DURATION</Text>
-              <TimeBadge durationMinutes={route.totalDurationMinutes} size="lg" />
+              <TimeBadge durationMinutes={durationMinutes} size="lg" />
             </View>
 
             <View style={styles.metricItem}>
               <Text style={styles.metricCaption}>TOTAL FARE</Text>
-              <FareBadge fare={route.totalFare} size="lg" variant="solid" />
+              <FareBadge fare={totalFare} size="lg" variant="solid" />
             </View>
 
             <View style={styles.metricItem}>
               <Text style={styles.metricCaption}>TRANSFERS</Text>
               <Text style={styles.metricValue}>
-                {route.transfersCount === 0 ? 'Direct' : `${route.transfersCount} transfer`}
+                {transfersCount === 0 ? 'Direct' : `${transfersCount} transfer`}
               </Text>
             </View>
 
             <View style={styles.metricItem}>
               <Text style={styles.metricCaption}>TOTAL WALK</Text>
-              <Text style={styles.metricValue}>🚶 {route.walkingDistanceMeters}m</Text>
+              <Text style={styles.metricValue}>🚶 {walkingDistance}m</Text>
             </View>
           </View>
         </View>
 
-        {/* Commute Step-by-Step Timeline */}
+        {/* Commute Step-by-Step Directions */}
         <View style={styles.timelineSection}>
           <Text style={styles.timelineSectionTitle}>STEP-BY-STEP DIRECTIONS</Text>
-          <RouteTimeline route={route} />
+
+          {journey && (
+            <View style={styles.stepsContainer}>
+              {journey.segments.map((seg, idx) => (
+                <View key={`jseg-${idx}`} style={styles.stepItem}>
+                  {/* Step Connector Line & Icon */}
+                  <View style={styles.stepIconColumn}>
+                    <View
+                      style={[
+                        styles.stepIconBubble,
+                        seg.type === 'transit' ? styles.transitBubble : styles.walkingBubble,
+                      ]}
+                    >
+                      <Text style={styles.stepEmoji}>{getModeEmoji(seg.mode)}</Text>
+                    </View>
+                    {idx < journey.segments.length - 1 && <View style={styles.stepDottedLine} />}
+                  </View>
+
+                  {/* Step Content */}
+                  <View style={styles.stepContentCard}>
+                    <View style={styles.stepHeaderRow}>
+                      <Text style={styles.stepTitle}>
+                        {seg.type === 'transit'
+                          ? `${seg.routeCode || seg.mode.toUpperCase()}: ${seg.routeName || ''}`
+                          : 'Walk'}
+                      </Text>
+                      {seg.fare > 0 && (
+                        <View style={styles.stepFareBadge}>
+                          <Text style={styles.stepFareText}>₱{seg.fare}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={styles.stepInstructions}>{seg.instructions}</Text>
+
+                    <View style={styles.stepMetaRow}>
+                      <Text style={styles.stepMetaText}>⏱ {seg.durationMinutes} min</Text>
+                      <Text style={styles.stepMetaDot}>·</Text>
+                      <Text style={styles.stepMetaText}>📏 {seg.distanceMeters}m</Text>
+                      {seg.stopsCount && (
+                        <>
+                          <Text style={styles.stepMetaDot}>·</Text>
+                          <Text style={styles.stepMetaText}>🚏 {seg.stopsCount} stops</Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -260,7 +352,96 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textSecondary,
     letterSpacing: 0.5,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  stepsContainer: {
+    gap: spacing.sm,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepIconColumn: {
+    alignItems: 'center',
+    width: 36,
+    marginRight: spacing.sm,
+  },
+  stepIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transitBubble: {
+    backgroundColor: colors.cardAlt,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  walkingBubble: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+  },
+  stepEmoji: {
+    fontSize: 14,
+  },
+  stepDottedLine: {
+    width: 2,
+    height: 48,
+    backgroundColor: colors.border,
+    marginVertical: 4,
+  },
+  stepContentCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  stepTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  stepFareBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  stepFareText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+  stepInstructions: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  stepMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  stepMetaDot: {
+    marginHorizontal: 4,
+    color: colors.textMuted,
+    fontSize: 10,
   },
   footer: {
     backgroundColor: colors.surface,

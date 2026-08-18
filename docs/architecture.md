@@ -108,8 +108,8 @@ PHASE 4: Map System & Geospatial Visualization (Complete)
 PHASE 5: Location Search & Place Autocomplete (Complete)
 └── Unified multi-entity search across places, stops, stations, and routes with pg_trgm GIN indexing, PostGIS proximity distance ranking, and 300ms debounced mobile autocomplete.
 
-PHASE 6: Routing Engine
-└── Multi-modal pathfinding algorithm (walking + jeepney + bus + train + UV express).
+PHASE 6: Multi-Modal Routing Engine (Complete)
+└── Graph-based multi-modal pathfinding across walking, jeepney, bus, MRT, and LRT corridors with PostGIS proximity queries, GTFS schedule time calculations, statutory fare matrix calculations, multi-criteria ranking, and mobile MapView polyline visualization.
 
 PHASE 7: Route Options
 └── Compare commute routes based on travel time, fare cost, transfer count, and walking distance.

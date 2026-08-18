@@ -20,6 +20,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 // Types & Mock Data
 import { Destination, RouteOption, SavedPlace, SavedRoute, RecentTrip } from '../types/index';
 import { SelectedLocation } from '../types/search.types';
+import { Journey } from '../types/routing.types';
 import { mockRouteOptions } from '../data/mockData';
 
 type AppFlowState =
@@ -41,7 +42,7 @@ export default function App(): React.JSX.Element {
   const [selectedDestination, setSelectedDestination] = useState<
     Destination | SelectedLocation | string
   >('SM North EDSA');
-  const [selectedRoute, setSelectedRoute] = useState<RouteOption>(mockRouteOptions[0]!);
+  const [selectedRoute, setSelectedRoute] = useState<Journey | RouteOption>(mockRouteOptions[0]!);
 
   // Navigation handlers
   const handleSplashFinish = (): void => {
@@ -84,12 +85,12 @@ export default function App(): React.JSX.Element {
     setFlowState('route_options');
   };
 
-  const handleSelectRouteOption = (route: RouteOption): void => {
+  const handleSelectRouteOption = (route: Journey | RouteOption): void => {
     setSelectedRoute(route);
     setFlowState('route_details');
   };
 
-  const handleStartTrip = (route: RouteOption): void => {
+  const handleStartTrip = (route: Journey | RouteOption): void => {
     setSelectedRoute(route);
     setFlowState('navigation');
   };

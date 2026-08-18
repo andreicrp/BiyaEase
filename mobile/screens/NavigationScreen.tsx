@@ -10,22 +10,60 @@ import { TransportIcon } from '../components/routes/TransportIcon';
 import { PrimaryButton } from '../components/common/PrimaryButton';
 import { SecondaryButton } from '../components/common/SecondaryButton';
 import { RouteOption } from '../types/index';
+import { Journey, JourneyMode } from '../types/routing.types';
 
 interface NavigationScreenProps {
-  route: RouteOption;
+  route: Journey | RouteOption;
   onEndTrip: () => void;
 }
 
 export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEndTrip }) => {
-  const [currentStepIndex, setCurrentStepIndex] = useState(1);
-  const currentStep = route.steps[currentStepIndex] || route.steps[0]!;
-  const isLastStep = currentStepIndex >= route.steps.length - 1;
+  const isJourney = 'segments' in route && Array.isArray((route as Journey).segments);
+  const journey = isJourney ? (route as Journey) : null;
+  const legacyOption = !isJourney ? (route as RouteOption) : null;
+
+  const destinationText = journey
+    ? journey.destination.name || 'Destination'
+    : legacyOption?.destination || 'Destination';
+  const originText = journey ? journey.origin.name || 'Origin' : legacyOption?.origin || 'Origin';
+  const totalFare = journey ? journey.fare : legacyOption?.totalFare || 0;
+
+  // Normalized step list
+  const steps = journey
+    ? journey.segments.map((seg) => ({
+        mode: seg.mode,
+        title:
+          seg.type === 'transit'
+            ? `${seg.routeCode || seg.mode.toUpperCase()}: ${seg.routeName || ''}`
+            : 'Walk',
+        subtitle: seg.instructions,
+        originStop: seg.fromStop?.name || 'Start',
+        destinationStop: seg.toStop?.name || 'End',
+        durationMinutes: seg.durationMinutes,
+        fare: seg.fare,
+        stopsCount: seg.stopsCount,
+        landmarkHint: undefined,
+      }))
+    : legacyOption?.steps || [];
+
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const currentStep = steps[currentStepIndex] ||
+    steps[0] || {
+      mode: 'walking' as JourneyMode,
+      title: 'Start Trip',
+      subtitle: 'Head towards destination',
+      originStop: originText,
+      destinationStop: destinationText,
+      durationMinutes: 5,
+      fare: 0,
+    };
+  const isLastStep = currentStepIndex >= steps.length - 1;
 
   const handleNextStep = (): void => {
     if (!isLastStep) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      Alert.alert('🎉 Arrived!', `You have reached ${route.destination}. Ingat sa biyahe!`, [
+      Alert.alert('🎉 Arrived!', `You have reached ${destinationText}. Ingat sa biyahe!`, [
         { text: 'Complete Trip', onPress: onEndTrip },
       ]);
     }
@@ -35,7 +73,7 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEnd
     <SafeAreaView style={styles.container}>
       <AppHeader
         title="Live Commute Navigation"
-        subtitle={route.destination}
+        subtitle={destinationText}
         rightAction={
           <View style={styles.liveStatusPill}>
             <View style={styles.livePulseDot} />
@@ -52,11 +90,11 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEnd
         {/* Navigation Map Visualizer */}
         <MapPlaceholder
           height={240}
-          origin={route.origin}
-          destination={route.destination}
+          origin={originText}
+          destination={destinationText}
           activeStepIndex={currentStepIndex}
           showRouteLine={true}
-          interactiveHint={`Active Step ${currentStepIndex + 1} of ${route.steps.length}`}
+          interactiveHint={`Active Step ${currentStepIndex + 1} of ${steps.length}`}
           style={styles.map}
         />
 
@@ -67,7 +105,7 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEnd
               <Text style={styles.actionBadgeText}>NEXT ACTION</Text>
             </View>
             <Text style={styles.stepProgressText}>
-              Step {currentStepIndex + 1} of {route.steps.length}
+              Step {currentStepIndex + 1} of {steps.length}
             </Text>
           </View>
 
@@ -103,14 +141,6 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEnd
             ) : null}
           </View>
 
-          {/* Landmark Tip */}
-          {currentStep.landmarkHint && (
-            <View style={styles.tipBox}>
-              <Text style={styles.tipIcon}>💡</Text>
-              <Text style={styles.tipText}>{currentStep.landmarkHint}</Text>
-            </View>
-          )}
-
           {/* Quick Metrics */}
           <View style={styles.metricsRow}>
             <View style={styles.metricCell}>
@@ -125,7 +155,7 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({ route, onEnd
             </View>
             <View style={styles.metricCell}>
               <Text style={styles.metricLabel}>TOTAL TRIP FARE</Text>
-              <Text style={styles.metricValue}>₱{route.totalFare}</Text>
+              <Text style={styles.metricValue}>₱{totalFare}</Text>
             </View>
           </View>
         </View>
@@ -276,24 +306,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xxs,
     fontWeight: '700',
     color: colors.primaryDark,
-  },
-  tipBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondaryLight,
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.md,
-  },
-  tipIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  tipText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: '600',
-    color: colors.secondaryDark,
-    flex: 1,
   },
   metricsRow: {
     flexDirection: 'row',

@@ -4,6 +4,7 @@ import healthRoutes from './health.routes.js';
 import transitRoutes from './transit.routes.js';
 import placesRoutes from './places.routes.js';
 import searchRoutes from './search.routes.js';
+import routingRoutes from './routing.routes.js';
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use('/api/health', healthRoutes);
 router.use('/api/transit', transitRoutes);
 router.use('/api/places', placesRoutes);
 router.use('/api/search', searchRoutes);
+router.use('/api/routes', routingRoutes);
 
 export default router;
