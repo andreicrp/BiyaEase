@@ -40,7 +40,8 @@
     "navigation:test": "tsx mobile/utils/navigationTestRunner.ts",
     "saved:test": "tsx mobile/utils/savedPlacesTestRunner.ts",
     "favorites:test": "tsx mobile/utils/favoriteRoutesTestRunner.ts",
-    "auth:test": "tsx server/src/test/authTestRunner.ts"
+    "auth:test": "tsx server/src/test/authTestRunner.ts",
+    "reports:test": "tsx server/src/test/reportsTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",

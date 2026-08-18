@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS users (
 ```
 
 ### Foreign Key Constraints
+
 - `saved_places.user_id` -> `users(id)` ON DELETE CASCADE
 - `favorite_routes.user_id` -> `users(id)` ON DELETE CASCADE
 
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
 ## 5. Local-to-Cloud Data Synchronization
 
 When a commuter signs in or registers an account:
+
 1. `AuthContext` saves the JWT token in `localStorageService`.
 2. `SavedDataContext` checks for active token and triggers background batch sync calls:
    - `POST /api/saved/places/sync`

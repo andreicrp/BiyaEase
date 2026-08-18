@@ -126,8 +126,8 @@ PHASE 10: Saved Places & Favorite Routes (Complete)
 PHASE 11: Authentication & User Profiles (Complete)
 └── Secure user registration, bcryptjs password hashing, JWT access tokens (7-day session), user profile management, protected saved data endpoints, and seamless local-to-cloud data synchronization.
 
-PHASE 12: Community Reports
-└── Commuter crowdsourced reports (traffic delays, broken trains, fare changes, long queues).
+PHASE 12: Community Reports (Complete)
+└── Commuter crowdsourced reports (traffic delays, crowded stations, vehicle availability, road blocks, fare changes), PostGIS spatial proximity queries (ST_DWithin), confirmation tracking, auto-expiration, and map hazard visualization.
 
 PHASE 13: Admin Dashboard
 └── Web interface for system analytics, commuter metrics, and data moderation.

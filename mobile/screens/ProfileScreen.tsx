@@ -16,6 +16,7 @@ interface ProfileScreenProps {
   onOpenSaved: () => void;
   onOpenLogin?: () => void;
   onOpenRegister?: () => void;
+  onOpenReportIssue?: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -23,6 +24,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onOpenSaved,
   onOpenLogin,
   onOpenRegister,
+  onOpenReportIssue,
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
 
@@ -38,6 +40,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   const menuItems = [
+    {
+      id: 'report',
+      icon: '📢',
+      title: 'Submit Crowd Report',
+      subtitle: 'Share real-time transit & traffic alerts',
+      action: onOpenReportIssue || (() => {}),
+    },
     {
       id: 'saved',
       icon: '⭐',

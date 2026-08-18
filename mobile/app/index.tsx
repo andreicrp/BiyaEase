@@ -19,6 +19,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { ReportIssueScreen } from '../screens/ReportIssueScreen';
 
 // Types & Mock Data
 import { Destination, RouteOption, SavedPlace, SavedRoute, RecentTrip } from '../types/index';
@@ -40,7 +41,8 @@ type AppFlowState =
   | 'navigation'
   | 'settings'
   | 'login'
-  | 'register';
+  | 'register'
+  | 'report_issue';
 
 function MainApp(): React.JSX.Element {
   const [flowState, setFlowState] = useState<AppFlowState>('splash');
@@ -217,6 +219,10 @@ function MainApp(): React.JSX.Element {
     );
   }
 
+  if (flowState === 'report_issue') {
+    return <ReportIssueScreen onBack={handleBackToMain} onSuccess={() => setFlowState('main')} />;
+  }
+
   // Main Tab Navigation View
   return (
     <RNView style={styles.mainContainer}>
@@ -273,6 +279,7 @@ function MainApp(): React.JSX.Element {
             onOpenSaved={() => setActiveTab('saved')}
             onOpenLogin={() => setFlowState('login')}
             onOpenRegister={() => setFlowState('register')}
+            onOpenReportIssue={() => setFlowState('report_issue')}
           />
         )}
       </RNView>

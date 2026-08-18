@@ -57,6 +57,7 @@ interface MapViewProps {
   polylines?: MapPolylineItem[];
   selectedStop?: ApiTransitStop | null;
   selectedPlace?: ApiPlace | null;
+  reports?: any[];
   onSelectStop?: (stop: ApiTransitStop | null) => void;
   onSelectPlace?: (place: ApiPlace | null) => void;
   onRegionChange?: (region: MapRegion) => void;

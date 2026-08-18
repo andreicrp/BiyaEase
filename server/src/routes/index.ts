@@ -7,6 +7,7 @@ import searchRoutes from './search.routes.js';
 import routingRoutes from './routing.routes.js';
 import authRoutes from './auth.routes.js';
 import savedDataRoutes from './savedData.routes.js';
+import reportsRoutes from './reports.routes.js';
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use('/api/search', searchRoutes);
 router.use('/api/routes', routingRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/saved', savedDataRoutes);
+router.use('/api/reports', reportsRoutes);
 
 export default router;
