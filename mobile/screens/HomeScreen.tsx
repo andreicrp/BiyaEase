@@ -86,7 +86,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           setPlaces(placesData.slice(0, 4));
         }
       } catch (err) {
-        console.warn('Failed to fetch home map data:', err);
+        // Quiet non-blocking log for offline/fallback mode
+        console.log('[Home] Map backend fallback active');
       } finally {
         if (isMounted) setIsLoading(false);
       }

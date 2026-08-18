@@ -135,7 +135,8 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
           setStops(data);
         }
       } catch (err) {
-        console.warn('Failed to load nearby stops:', err);
+        // Quiet non-blocking log for offline/fallback mode
+        console.log('[Nearby] Map backend fallback active');
       } finally {
         if (isMounted) setIsLoading(false);
       }
