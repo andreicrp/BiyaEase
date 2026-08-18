@@ -7,6 +7,31 @@ class LocationService {
   private watcherId: number | NodeJS.Timeout | null = null;
   private isWatching = false;
   private lastLocation: UserLocation | null = null;
+  private customOriginName: string = 'UP Diliman, Quezon City';
+
+  /**
+   * Set custom location (editing current origin)
+   */
+  setCustomLocation(lat: number, lng: number, name?: string): UserLocation {
+    const loc: UserLocation = {
+      latitude: lat,
+      longitude: lng,
+      accuracy: 5,
+      timestamp: new Date().toISOString(),
+    };
+    this.lastLocation = loc;
+    if (name) {
+      this.customOriginName = name;
+    }
+    return loc;
+  }
+
+  /**
+   * Get location display name
+   */
+  getLocationName(): string {
+    return this.customOriginName;
+  }
 
   /**
    * Validate that GPS coordinates fall within valid geographic bounds

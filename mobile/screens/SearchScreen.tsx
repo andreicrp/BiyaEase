@@ -14,15 +14,21 @@ import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { SearchBar } from '../components/common/SearchBar';
 import { searchApiService } from '../services/searchApiService';
+import { locationService } from '../services/locationService';
 import { SearchResult, SelectedLocation, RecentSearchItem } from '../types/search.types';
 import { Destination } from '../types/index';
 
 interface SearchScreenProps {
+  mode?: 'destination' | 'origin';
   onBack: () => void;
   onSelectDestination: (destination: Destination | SelectedLocation) => void;
 }
 
-export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDestination }) => {
+export const SearchScreen: React.FC<SearchScreenProps> = ({
+  mode = 'destination',
+  onBack,
+  onSelectDestination,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
@@ -78,7 +84,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
       subtitle: item.subtitle,
     };
 
-    await searchApiService.saveRecentSearch(selected);
+    if (mode === 'origin') {
+      locationService.setCustomLocation(item.latitude, item.longitude, item.name);
+    } else {
+      await searchApiService.saveRecentSearch(selected);
+    }
     onSelectDestination(selected);
   };
 
@@ -91,6 +101,9 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
       longitude: 121.0685,
       subtitle: 'UP Diliman, Quezon City',
     };
+    if (mode === 'origin') {
+      locationService.setCustomLocation(14.6538, 121.0685, 'UP Diliman, Quezon City');
+    }
     onSelectDestination(currentLoc);
   };
 
@@ -129,9 +142,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
     return '📍';
   };
 
+  const originDisplayName = locationService.getLocationName();
+
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Search Destination" onBack={onBack} />
+      <AppHeader
+        title={mode === 'origin' ? 'Edit Starting Origin' : 'Search Destination'}
+        onBack={onBack}
+      />
 
       {/* Top Search Input Box */}
       <View style={styles.searchSection}>
@@ -142,9 +160,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
           activeOpacity={0.8}
         >
           <Text style={styles.originIcon}>📍</Text>
-          <Text style={styles.originLabel}>Current Origin:</Text>
+          <Text style={styles.originLabel}>
+            {mode === 'origin' ? 'Use Device GPS:' : 'Starting Origin:'}
+          </Text>
           <Text style={styles.originValue} numberOfLines={1}>
-            UP Diliman (Quezon City)
+            {originDisplayName}
           </Text>
         </TouchableOpacity>
 
@@ -152,7 +172,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
         <SearchBar
           value={searchQuery}
           onChangeText={handleQueryChange}
-          placeholder="Where to? (e.g. SM North, UP, MRT-3, Philcoa)"
+          placeholder={
+            mode === 'origin'
+              ? 'Search origin (e.g. SM North, Cubao, Philcoa)'
+              : 'Where to? (e.g. SM North, UP, MRT-3, Philcoa)'
+          }
           autoFocus={true}
           onClear={() => handleQueryChange('')}
         />

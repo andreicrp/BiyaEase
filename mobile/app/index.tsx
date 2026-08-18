@@ -38,6 +38,7 @@ type AppFlowState =
 function MainApp(): React.JSX.Element {
   const [flowState, setFlowState] = useState<AppFlowState>('splash');
   const [activeTab, setActiveTab] = useState<MainTabType>('home');
+  const [searchMode, setSearchMode] = useState<'destination' | 'origin'>('destination');
   const { startJourney } = useJourney();
 
   // Active Flow State Data
@@ -64,12 +65,22 @@ function MainApp(): React.JSX.Element {
   };
 
   const handleOpenSearch = (): void => {
+    setSearchMode('destination');
+    setFlowState('search');
+  };
+
+  const handleOpenOriginSearch = (): void => {
+    setSearchMode('origin');
     setFlowState('search');
   };
 
   const handleSelectDestination = (dest: Destination | SelectedLocation | string): void => {
-    setSelectedDestination(dest);
-    setFlowState('route_options');
+    if (searchMode === 'origin') {
+      setFlowState('main');
+    } else {
+      setSelectedDestination(dest);
+      setFlowState('route_options');
+    }
   };
 
   const handleSelectSavedPlace = (place: SavedPlace): void => {
@@ -130,13 +141,19 @@ function MainApp(): React.JSX.Element {
   }
 
   if (flowState === 'search') {
-    return <SearchScreen onBack={handleBackToMain} onSelectDestination={handleSelectDestination} />;
+    return (
+      <SearchScreen
+        mode={searchMode}
+        onBack={handleBackToMain}
+        onSelectDestination={handleSelectDestination}
+      />
+    );
   }
 
   if (flowState === 'route_options') {
     return (
       <RouteOptionsScreen
-        origin="UP Diliman"
+        origin={typeof window !== 'undefined' ? (window as any).customOriginName || 'UP Diliman' : 'UP Diliman'}
         destination={selectedDestination}
         onBack={handleBackToMain}
         onSelectRoute={handleSelectRouteOption}
@@ -172,6 +189,7 @@ function MainApp(): React.JSX.Element {
         {activeTab === 'home' && (
           <HomeScreen
             onOpenSearch={handleOpenSearch}
+            onOpenOriginSearch={handleOpenOriginSearch}
             onSelectDestination={handleSelectDestination}
             onSelectSavedPlace={handleSelectSavedPlace}
             onSelectRecentTrip={handleSelectRecentTrip}

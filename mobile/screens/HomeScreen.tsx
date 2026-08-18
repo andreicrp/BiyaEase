@@ -30,6 +30,7 @@ import { locationService } from '../services/locationService';
 
 interface HomeScreenProps {
   onOpenSearch: () => void;
+  onOpenOriginSearch?: () => void;
   onSelectDestination: (dest: Destination) => void;
   onSelectSavedPlace: (place: SavedPlace) => void;
   onSelectRecentTrip: (trip: RecentTrip) => void;
@@ -42,6 +43,7 @@ const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 }; // UP 
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenSearch,
+  onOpenOriginSearch,
   onSelectSavedPlace,
   onSelectRecentTrip,
   onOpenNearby,
@@ -54,6 +56,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
+
+  const originName = locationService.getLocationName();
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>(() => {
     const last = locationService.getLastLocation();
@@ -179,14 +183,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={onOpenSearch}
           />
 
-          {/* Current Location Pill */}
-          <View style={styles.currentLocationRow}>
+          {/* Editable Current Origin Location Pill */}
+          <TouchableOpacity
+            style={styles.currentLocationRow}
+            onPress={onOpenOriginSearch || onOpenSearch}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Edit starting origin location"
+          >
             <Text style={styles.locationPinIcon}>📍</Text>
             <Text style={styles.currentLocationLabel}>Current origin:</Text>
             <Text style={styles.currentLocationName} numberOfLines={1}>
-              UP Diliman, Quezon City
+              {originName}
             </Text>
-          </View>
+            <Text style={styles.editPillText}>✏️ Edit</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Destinations (Home, School, Work) */}
@@ -432,6 +443,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primaryDark,
     flex: 1,
+  },
+  editPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
+    marginLeft: 6,
+    backgroundColor: colors.cardAlt,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
   },
   section: {
     marginBottom: spacing.xl,
