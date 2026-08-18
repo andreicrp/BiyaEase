@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
@@ -7,6 +7,7 @@ import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { Mascot } from '../components/common/Mascot';
 import { PrimaryButton } from '../components/common/PrimaryButton';
 import { SecondaryButton } from '../components/common/SecondaryButton';
+import { locationService } from '../services/locationService';
 
 interface LocationPermissionScreenProps {
   onAllow: () => void;
@@ -17,6 +18,20 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
   onAllow,
   onSkip,
 }) => {
+  const [isRequesting, setIsRequesting] = useState<boolean>(false);
+
+  const handleAllow = async () => {
+    setIsRequesting(true);
+    try {
+      await locationService.requestPermission();
+    } catch {
+      // Continue gracefully with default
+    } finally {
+      setIsRequesting(false);
+      onAllow();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -46,12 +61,18 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
 
       {/* Action Buttons */}
       <View style={styles.footer}>
-        <PrimaryButton title="Allow Location Access" onPress={onAllow} style={styles.allowButton} />
+        <PrimaryButton
+          title={isRequesting ? 'Detecting Location...' : 'Allow Location Access'}
+          onPress={handleAllow}
+          style={styles.allowButton}
+          disabled={isRequesting}
+        />
         <SecondaryButton
           title="Maybe Later"
           onPress={onSkip}
           variant="ghost"
           style={styles.skipButton}
+          disabled={isRequesting}
         />
       </View>
     </SafeAreaView>

@@ -306,19 +306,31 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  // High-performance smooth gesture state with batched animation frame scheduling
+  // High-performance smooth gesture state tracking
   const gestureStateRef = useRef<{
-    lastTouchTime: number;
-    lastDistance: number | null;
-    lastMidpoint: { x: number; y: number } | null;
     startLat: number;
     startLng: number;
+    startDx: number;
+    startDy: number;
+    initialPinchDistance: number | null;
+    initialLongitudeDelta: number;
+    initialLatitudeDelta: number;
+    initialMidpoint: { x: number; y: number } | null;
+    initialPinchCenterLat: number;
+    initialPinchCenterLng: number;
+    activeFingerCount: number;
   }>({
-    lastTouchTime: 0,
-    lastDistance: null,
-    lastMidpoint: null,
     startLat: currentRegion.latitude,
     startLng: currentRegion.longitude,
+    startDx: 0,
+    startDy: 0,
+    initialPinchDistance: null,
+    initialLongitudeDelta: currentRegion.longitudeDelta,
+    initialLatitudeDelta: currentRegion.latitudeDelta,
+    initialMidpoint: null,
+    initialPinchCenterLat: currentRegion.latitude,
+    initialPinchCenterLng: currentRegion.longitude,
+    activeFingerCount: 0,
   });
 
   const panResponder = useRef(
@@ -327,26 +339,31 @@ export const MapView: React.FC<MapViewProps> = ({
       onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
         Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3 || (gesture.numberActiveTouches || 0) >= 2,
 
-      onPanResponderGrant: (evt: GestureResponderEvent) => {
+      onPanResponderGrant: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
         evt?.persist?.();
         isGestureActiveRef.current = true;
         const touchData = extractTouchData(evt);
+        const currentReg = regionRef.current;
+
         gestureStateRef.current = {
-          lastTouchTime: Date.now(),
-          lastDistance: touchData.distance,
-          lastMidpoint: touchData.midpoint,
-          startLat: regionRef.current.latitude,
-          startLng: regionRef.current.longitude,
+          startLat: currentReg.latitude,
+          startLng: currentReg.longitude,
+          startDx: gesture.dx,
+          startDy: gesture.dy,
+          initialPinchDistance: touchData.distance,
+          initialLongitudeDelta: currentReg.longitudeDelta,
+          initialLatitudeDelta: currentReg.latitudeDelta,
+          initialMidpoint: touchData.midpoint,
+          initialPinchCenterLat: currentReg.latitude,
+          initialPinchCenterLng: currentReg.longitude,
+          activeFingerCount: touchData.count,
         };
       },
 
       onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
         evt?.persist?.();
-        // Extract all touch properties synchronously BEFORE scheduling requestAnimationFrame
         const { count, distance: currentDistance, midpoint: currentMid } = extractTouchData(evt);
-        const dx = gesture.dx;
-        const dy = gesture.dy;
-        const reg = regionRef.current;
+        const gState = gestureStateRef.current;
         const { width, height: h } = dimensions;
 
         if (animFrameIdRef.current !== null) {
@@ -354,59 +371,77 @@ export const MapView: React.FC<MapViewProps> = ({
         }
 
         animFrameIdRef.current = requestAnimationFrame(() => {
-          // 1. Smooth Progressive Two-Finger Pinch Zoom
-          if (count >= 2 && currentDistance) {
-            const lastDist = gestureStateRef.current.lastDistance;
-
-            if (lastDist && lastDist > 10) {
-              const rawRatio = lastDist / currentDistance;
-              const dampedRatio = 1 + (rawRatio - 1) * 0.75;
-              const newDelta = Math.max(Math.min(reg.longitudeDelta * dampedRatio, 0.35), 0.003);
-
-              let newLat = reg.latitude;
-              let newLng = reg.longitude;
-
-              if (currentMid && gestureStateRef.current.lastMidpoint) {
-                const dMidX = currentMid.x - gestureStateRef.current.lastMidpoint.x;
-                const dMidY = currentMid.y - gestureStateRef.current.lastMidpoint.y;
-                newLng -= (dMidX / width) * reg.longitudeDelta;
-                newLat += (dMidY / h) * reg.latitudeDelta;
-              }
-
-              gestureStateRef.current.lastDistance = currentDistance;
-              gestureStateRef.current.lastMidpoint = currentMid;
-
-              setCurrentRegion({
-                latitude: newLat,
-                longitude: newLng,
-                latitudeDelta: newDelta,
-                longitudeDelta: newDelta,
-              });
-              return;
+          // A. Multi-Touch Pinch Zoom (2+ fingers)
+          if (count >= 2 && currentDistance && currentDistance > 10) {
+            // If transition from 1 finger to 2 fingers occurred mid-gesture
+            if (gState.initialPinchDistance === null || gState.activeFingerCount < 2) {
+              const currentReg = regionRef.current;
+              gState.initialPinchDistance = currentDistance;
+              gState.initialLongitudeDelta = currentReg.longitudeDelta;
+              gState.initialLatitudeDelta = currentReg.latitudeDelta;
+              gState.initialMidpoint = currentMid;
+              gState.initialPinchCenterLat = currentReg.latitude;
+              gState.initialPinchCenterLng = currentReg.longitude;
+              gState.activeFingerCount = 2;
             }
-            gestureStateRef.current.lastDistance = currentDistance;
-            gestureStateRef.current.lastMidpoint = currentMid;
+
+            // Proportional smooth scaling: scale = current / initial
+            const scale = Math.max(0.2, Math.min(5.0, currentDistance / gState.initialPinchDistance));
+            const newLngDelta = Math.max(0.002, Math.min(0.4, gState.initialLongitudeDelta / scale));
+            const newLatDelta = Math.max(0.002, Math.min(0.4, gState.initialLatitudeDelta / scale));
+
+            let newLat = gState.initialPinchCenterLat;
+            let newLng = gState.initialPinchCenterLng;
+
+            // Pan while pinching based on midpoint displacement
+            if (currentMid && gState.initialMidpoint) {
+              const dMidX = currentMid.x - gState.initialMidpoint.x;
+              const dMidY = currentMid.y - gState.initialMidpoint.y;
+              newLng -= (dMidX / width) * newLngDelta;
+              newLat += (dMidY / h) * newLatDelta;
+            }
+
+            setCurrentRegion({
+              latitude: newLat,
+              longitude: newLng,
+              latitudeDelta: newLatDelta,
+              longitudeDelta: newLngDelta,
+            });
+            return;
           }
 
-          // 2. Responsive One-Finger Smooth Pan
-          const dLng = -(dx / width) * reg.longitudeDelta;
-          const dLat = (dy / h) * reg.latitudeDelta;
+          // B. Single-Finger Smooth Pan
+          if (gState.activeFingerCount >= 2) {
+            // Lifted finger: reset base coordinates to current view
+            const currentReg = regionRef.current;
+            gState.startLat = currentReg.latitude;
+            gState.startLng = currentReg.longitude;
+            gState.startDx = gesture.dx;
+            gState.startDy = gesture.dy;
+            gState.initialPinchDistance = null;
+            gState.activeFingerCount = 1;
+          }
 
-          const nextLat = gestureStateRef.current.startLat + dLat;
-          const nextLng = gestureStateRef.current.startLng + dLng;
+          const reg = regionRef.current;
+          const movedDx = gesture.dx - gState.startDx;
+          const movedDy = gesture.dy - gState.startDy;
+
+          const dLng = -(movedDx / width) * reg.longitudeDelta;
+          const dLat = (movedDy / h) * reg.latitudeDelta;
 
           setCurrentRegion({
             ...reg,
-            latitude: nextLat,
-            longitude: nextLng,
+            latitude: gState.startLat + dLat,
+            longitude: gState.startLng + dLng,
           });
         });
       },
 
       onPanResponderRelease: () => {
         isGestureActiveRef.current = false;
-        gestureStateRef.current.lastDistance = null;
-        gestureStateRef.current.lastMidpoint = null;
+        gestureStateRef.current.initialPinchDistance = null;
+        gestureStateRef.current.initialMidpoint = null;
+        gestureStateRef.current.activeFingerCount = 0;
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
           animFrameIdRef.current = null;
@@ -416,8 +451,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
       onPanResponderTerminate: () => {
         isGestureActiveRef.current = false;
-        gestureStateRef.current.lastDistance = null;
-        gestureStateRef.current.lastMidpoint = null;
+        gestureStateRef.current.initialPinchDistance = null;
+        gestureStateRef.current.initialMidpoint = null;
+        gestureStateRef.current.activeFingerCount = 0;
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
           animFrameIdRef.current = null;

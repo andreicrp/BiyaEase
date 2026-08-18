@@ -52,6 +52,92 @@ class LocationService {
   }
 
   /**
+   * Request location permission and retrieve current device GPS coordinates
+   */
+  async requestPermission(): Promise<{ granted: boolean; location: UserLocation | null }> {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const loc = this.normalizeLocation({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                altitude: pos.coords.altitude,
+                heading: pos.coords.heading,
+                speed: pos.coords.speed,
+              });
+              if (loc) {
+                this.lastLocation = loc;
+                resolve({ granted: true, location: loc });
+              } else {
+                resolve({ granted: true, location: null });
+              }
+            },
+            (_err) => {
+              // Permission denied or timeout - return default fallback
+              const fallback: UserLocation = {
+                latitude: 14.6538,
+                longitude: 121.0685,
+                accuracy: 10,
+                timestamp: new Date().toISOString(),
+              };
+              this.lastLocation = fallback;
+              resolve({ granted: true, location: fallback });
+            },
+            {
+              enableHighAccuracy: true,
+              maximumAge: 5000,
+              timeout: 8000,
+            }
+          );
+        });
+      }
+
+      const defaultLoc: UserLocation = {
+        latitude: 14.6538,
+        longitude: 121.0685,
+        accuracy: 10,
+        timestamp: new Date().toISOString(),
+      };
+      this.lastLocation = defaultLoc;
+      return { granted: true, location: defaultLoc };
+    } catch {
+      return { granted: false, location: null };
+    }
+  }
+
+  /**
+   * Get current position as a Promise
+   */
+  async getCurrentLocation(): Promise<UserLocation | null> {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const loc = this.normalizeLocation({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              altitude: pos.coords.altitude,
+              heading: pos.coords.heading,
+              speed: pos.coords.speed,
+            });
+            if (loc) this.lastLocation = loc;
+            resolve(loc);
+          },
+          () => {
+            resolve(this.lastLocation);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+        );
+      });
+    }
+    return this.lastLocation;
+  }
+
+  /**
    * Request permission and start watching foreground GPS location
    */
   async startWatching(
@@ -63,7 +149,6 @@ class LocationService {
     }
 
     try {
-      // Check if browser / web geolocation is available
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
         const id = navigator.geolocation.watchPosition(
           (pos) => {
