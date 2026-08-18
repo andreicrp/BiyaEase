@@ -1,7 +1,10 @@
 import { Journey, RoutingSearchRequest } from '../types/routing.types';
 import { mockRouteOptions } from '../data/mockData';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL =
+  typeof window !== 'undefined' && window.location?.hostname
+    ? `http://${window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname}:5000/api`
+    : 'http://127.0.0.1:5000/api';
 
 export const routingApiService = {
   /**
