@@ -6,11 +6,13 @@ interface UserLocationMarkerProps {
   size?: number;
 }
 
+const RNView = View as any;
+
 export const UserLocationMarker: React.FC<UserLocationMarkerProps> = ({ size = 20 }) => {
   return (
-    <View style={[styles.container, { width: size + 16, height: size + 16 }]}>
+    <RNView style={[styles.container, { width: size + 16, height: size + 16 }]}>
       {/* Outer Pulse Halo */}
-      <View
+      <RNView
         style={[
           styles.halo,
           {
@@ -22,7 +24,7 @@ export const UserLocationMarker: React.FC<UserLocationMarkerProps> = ({ size = 2
       />
 
       {/* Solid Inner Dot */}
-      <View
+      <RNView
         style={[
           styles.innerDot,
           {
@@ -32,9 +34,9 @@ export const UserLocationMarker: React.FC<UserLocationMarkerProps> = ({ size = 2
           },
         ]}
       >
-        <View style={styles.centerWhiteDot} />
-      </View>
-    </View>
+        <RNView style={styles.centerWhiteDot} />
+      </RNView>
+    </RNView>
   );
 };
 

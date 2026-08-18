@@ -13,6 +13,8 @@ interface RoutePolylineProps {
   project?: (coord: Coordinates) => { x: number; y: number };
 }
 
+const RNView = View as any;
+
 export const RoutePolyline: React.FC<RoutePolylineProps> = ({
   coordinates,
   color = colors.primary,
@@ -69,7 +71,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
     }, '');
 
     return (
-      <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
+      <RNView style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
         <svg style={{ position: 'absolute', width, height }} viewBox={`0 0 ${width} ${height}`}>
           <path
             d={pathData}
@@ -88,7 +90,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
             strokeLinejoin="round"
           />
         </svg>
-      </View>
+      </RNView>
     );
   }
 
@@ -107,7 +109,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
     const midY = (p1.y + p2.y) / 2;
 
     segments.push(
-      <View
+      <RNView
         key={`seg-${i}`}
         style={{
           position: 'absolute',
@@ -124,9 +126,9 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
   }
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
+    <RNView style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
       {segments}
-    </View>
+    </RNView>
   );
 };
 
