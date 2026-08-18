@@ -92,18 +92,17 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     onSelectDestination(selected);
   };
 
-  const handleSelectCurrentLocation = () => {
+  const handleSelectCurrentLocation = async () => {
+    locationService.resetToGps();
+    const gpsLoc = await locationService.getCurrentLocation();
     const currentLoc: SelectedLocation = {
       id: 'current-location',
       name: 'Current Location',
       type: 'place',
-      latitude: 14.6538,
-      longitude: 121.0685,
-      subtitle: 'UP Diliman, Quezon City',
+      latitude: gpsLoc?.latitude ?? 14.6538,
+      longitude: gpsLoc?.longitude ?? 121.0685,
+      subtitle: 'Live Device GPS',
     };
-    if (mode === 'origin') {
-      locationService.setCustomLocation(14.6538, 121.0685, 'UP Diliman, Quezon City');
-    }
     onSelectDestination(currentLoc);
   };
 

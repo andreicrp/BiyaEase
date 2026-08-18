@@ -8,6 +8,7 @@ class LocationService {
   private isWatching = false;
   private lastLocation: UserLocation | null = null;
   private customOriginName: string = 'UP Diliman, Quezon City';
+  private isCustomOverride: boolean = false;
 
   /**
    * Set custom location (editing current origin)
@@ -20,10 +21,26 @@ class LocationService {
       timestamp: new Date().toISOString(),
     };
     this.lastLocation = loc;
+    this.isCustomOverride = true;
     if (name) {
       this.customOriginName = name;
     }
     return loc;
+  }
+
+  /**
+   * Reset custom override back to device GPS
+   */
+  resetToGps(): void {
+    this.isCustomOverride = false;
+    this.customOriginName = 'UP Diliman, Quezon City';
+  }
+
+  /**
+   * Check if user manually set a custom origin
+   */
+  getIsCustomOverride(): boolean {
+    return this.isCustomOverride;
   }
 
   /**
@@ -137,6 +154,9 @@ class LocationService {
    * Get current position as a Promise
    */
   async getCurrentLocation(): Promise<UserLocation | null> {
+    if (this.isCustomOverride && this.lastLocation) {
+      return this.lastLocation;
+    }
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
@@ -149,8 +169,8 @@ class LocationService {
               heading: pos.coords.heading,
               speed: pos.coords.speed,
             });
-            if (loc) this.lastLocation = loc;
-            resolve(loc);
+            if (loc && !this.isCustomOverride) this.lastLocation = loc;
+            resolve(this.lastLocation || loc);
           },
           () => {
             resolve(this.lastLocation);
@@ -177,6 +197,8 @@ class LocationService {
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
         const id = navigator.geolocation.watchPosition(
           (pos) => {
+            if (this.isCustomOverride) return;
+
             const loc = this.normalizeLocation({
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
