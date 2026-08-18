@@ -10,7 +10,7 @@ import { PrimaryButton } from '../components/common/PrimaryButton';
 import { FareBadge } from '../components/common/FareBadge';
 import { TimeBadge } from '../components/common/TimeBadge';
 import { ApiTransitStop } from '../services/transitApiService';
-import { Coordinates } from '../utils/geoUtils';
+import { Coordinates, interpolateRoadCorridor } from '../utils/geoUtils';
 import { RouteOption } from '../types/index';
 import { Journey, JourneyMode } from '../types/routing.types';
 
@@ -85,37 +85,49 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
         stops.forEach((s) => allCoords.push({ latitude: s.latitude, longitude: s.longitude }));
       }
 
-      setRouteCoordinates(allCoords);
+      setRouteCoordinates(interpolateRoadCorridor(allCoords));
       setRouteStops(stops);
     } else if (legacyOption) {
       const fallbackPoints: Coordinates[] = legacyOption.steps
         .filter((s) => s.coordinates)
         .map((s) => s.coordinates!);
-      setRouteCoordinates(fallbackPoints);
-      setRouteStops(
-        legacyOption.steps.map((s, idx) => ({
-          id: `step-stop-${idx}`,
-          name: s.instructions || s.title,
-          code: `STOP-${idx + 1}`,
-          latitude: 14.6538 + idx * 0.005,
-          longitude: 121.0685 - idx * 0.005,
-          mode: s.mode,
-        }))
-      );
+      
+      const stopsData: ApiTransitStop[] = [
+        {
+          id: 'step-stop-0',
+          name: legacyOption.steps[0]?.originStop || 'UP Diliman Campus',
+          code: 'BOARD-1',
+          latitude: 14.6538,
+          longitude: 121.0685,
+          mode: 'jeepney',
+        },
+        {
+          id: 'step-stop-1',
+          name: 'Philcoa Terminal / Commonwealth',
+          code: 'TRANSFER',
+          latitude: 14.6542,
+          longitude: 121.0535,
+          mode: 'jeepney',
+        },
+        {
+          id: 'step-stop-2',
+          name: legacyOption.steps[legacyOption.steps.length - 1]?.destinationStop || 'SM North EDSA Terminal',
+          code: 'ALIGHT',
+          latitude: 14.6565,
+          longitude: 121.0288,
+          mode: 'bus',
+        },
+      ];
+
+      setRouteCoordinates(interpolateRoadCorridor(fallbackPoints));
+      setRouteStops(stopsData);
     }
   }, [journey, legacyOption]);
 
   const polyline: MapPolylineItem = React.useMemo(
     () => ({
       id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
-      coordinates:
-        routeCoordinates.length >= 2
-          ? routeCoordinates
-          : [
-              { latitude: 14.6538, longitude: 121.0685 },
-              { latitude: 14.6519, longitude: 121.0718 },
-              { latitude: 14.6536, longitude: 121.0531 },
-            ],
+      coordinates: interpolateRoadCorridor(routeCoordinates),
       color: colors.primary,
       strokeWidth: 5,
     }),

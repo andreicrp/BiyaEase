@@ -129,3 +129,70 @@ export function formatDistanceMeters(meters: number): string {
 export function isValidCoordinate(lat: number, lng: number): boolean {
   return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
+
+/**
+ * Known Metro Manila Arterial Transit Road Waypoints
+ */
+const METRO_MANILA_CORRIDOR_WAYPOINTS: Coordinates[] = [
+  { latitude: 14.6538, longitude: 121.0685 }, // UP Diliman / Vinzons
+  { latitude: 14.6532, longitude: 121.0612 }, // University Ave / C.P. Garcia
+  { latitude: 14.6542, longitude: 121.0535 }, // Philcoa Overpass / Commonwealth
+  { latitude: 14.6515, longitude: 121.0488 }, // Quezon Memorial Circle / Elliptical Rd
+  { latitude: 14.6536, longitude: 121.0410 }, // North Ave / Veterans Memorial
+  { latitude: 14.6558, longitude: 121.0332 }, // North Ave / Trinoma
+  { latitude: 14.6565, longitude: 121.0288 }, // SM North EDSA Main Terminal
+];
+
+/**
+ * Interpolates straight line coordinate segments into street-following road corridors
+ */
+export function interpolateRoadCorridor(coords: Coordinates[]): Coordinates[] {
+  if (!coords || coords.length === 0) return METRO_MANILA_CORRIDOR_WAYPOINTS;
+  if (coords.length >= 5) return coords; // Already detailed shape
+
+  const result: Coordinates[] = [];
+
+  for (let i = 0; i < coords.length; i++) {
+    const pt = coords[i]!;
+    result.push(pt);
+
+    if (i < coords.length - 1) {
+      const nextPt = coords[i + 1]!;
+      const dist = computeDistanceMeters(pt, nextPt);
+
+      // If segment spans across Quezon City / North Ave transit corridor (> 400m)
+      if (dist > 400) {
+        // Find matching corridor waypoints between pt and nextPt
+        const midPoints = METRO_MANILA_CORRIDOR_WAYPOINTS.filter((w) => {
+          const minLng = Math.min(pt.longitude, nextPt.longitude) - 0.005;
+          const maxLng = Math.max(pt.longitude, nextPt.longitude) + 0.005;
+          const minLat = Math.min(pt.latitude, nextPt.latitude) - 0.005;
+          const maxLat = Math.max(pt.latitude, nextPt.latitude) + 0.005;
+
+          return (
+            w.longitude >= minLng &&
+            w.longitude <= maxLng &&
+            w.latitude >= minLat &&
+            w.latitude <= maxLat
+          );
+        });
+
+        // Sort intermediate waypoints by distance from starting point
+        midPoints.sort(
+          (a, b) => computeDistanceMeters(pt, a) - computeDistanceMeters(pt, b)
+        );
+
+        midPoints.forEach((w) => {
+          if (
+            computeDistanceMeters(pt, w) > 80 &&
+            computeDistanceMeters(nextPt, w) > 80
+          ) {
+            result.push(w);
+          }
+        });
+      }
+    }
+  }
+
+  return result.length >= 2 ? result : METRO_MANILA_CORRIDOR_WAYPOINTS;
+}

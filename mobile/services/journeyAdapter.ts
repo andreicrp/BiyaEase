@@ -1,6 +1,7 @@
 import { Journey, JourneySegment } from '../types/routing.types';
 import { ActiveJourney, JourneyStep } from '../types/journey.types';
 import { RouteOption } from '../types';
+import { interpolateRoadCorridor } from '../utils/geoUtils';
 
 export const journeyAdapter = {
   /**
@@ -142,7 +143,7 @@ export const journeyAdapter = {
       totalDurationMinutes: journey.durationMinutes,
       steps,
       currentStepIndex: 0,
-      polylineCoordinates,
+      polylineCoordinates: interpolateRoadCorridor(polylineCoordinates),
     };
   },
 
@@ -150,6 +151,10 @@ export const journeyAdapter = {
    * Adapter for legacy RouteOption models
    */
   fromRouteOption(option: RouteOption): ActiveJourney {
+    const rawCoords: { latitude: number; longitude: number }[] = option.steps
+      .filter((s) => s.coordinates)
+      .map((s) => s.coordinates!);
+
     const steps: JourneyStep[] = option.steps.map((s, idx) => ({
       id: `step-${idx}-${s.id}`,
       type: (s.mode === 'walking' ? 'walk' : 'transit') as 'walk' | 'transit',
@@ -177,14 +182,15 @@ export const journeyAdapter = {
         name: option.origin,
       },
       destination: {
-        latitude: 14.6515,
-        longitude: 121.0335,
+        latitude: 14.6565,
+        longitude: 121.0288,
         name: option.destination,
       },
       totalFare: option.totalFare,
       totalDurationMinutes: option.totalDurationMinutes,
       steps,
       currentStepIndex: 0,
+      polylineCoordinates: interpolateRoadCorridor(rawCoords),
     };
   },
 };
