@@ -274,7 +274,9 @@ export const MapView: React.FC<MapViewProps> = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
-        Math.abs(gesture.dx) > 1.5 || Math.abs(gesture.dy) > 1.5 || gesture.numberActiveTouches >= 2,
+        Math.abs(gesture.dx) > 1.5 ||
+        Math.abs(gesture.dy) > 1.5 ||
+        gesture.numberActiveTouches >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent) => {
         const dist = getTouchDistance(evt);

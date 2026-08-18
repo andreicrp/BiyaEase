@@ -111,8 +111,8 @@ PHASE 5: Location Search & Place Autocomplete (Complete)
 PHASE 6: Multi-Modal Routing Engine (Complete)
 └── Graph-based multi-modal pathfinding across walking, jeepney, bus, MRT, and LRT corridors with PostGIS proximity queries, GTFS schedule time calculations, statutory fare matrix calculations, multi-criteria ranking, and mobile MapView polyline visualization.
 
-PHASE 7: Route Options
-└── Compare commute routes based on travel time, fare cost, transfer count, and walking distance.
+PHASE 7: Active Journey & GPS Progress System (Complete)
+└── Client-side active journey state machine (JourneyContext), foreground GPS tracking (locationService), proximity detection engine (journeyProgressService), boarding and alighting alerts, and local persistence.
 
 PHASE 8: Route Details
 └── Step-by-step turn/transfer instructions, boarding points, landmark hints, and fare breakdown.

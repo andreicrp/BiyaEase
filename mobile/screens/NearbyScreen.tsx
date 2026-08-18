@@ -30,10 +30,7 @@ const COLLAPSED_HEIGHT = 80;
 const HALF_HEIGHT = Math.min(360, SCREEN_HEIGHT * 0.48);
 const EXPANDED_HEIGHT = Math.min(560, SCREEN_HEIGHT * 0.72);
 
-export const NearbyScreen: React.FC<NearbyScreenProps> = ({
-  onSelectTransport,
-  onOpenSearch,
-}) => {
+export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, onOpenSearch }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | TransitMode>('all');
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -52,7 +49,9 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
   const sheetHeightAnim = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
   const currentHeightRef = useRef<number>(COLLAPSED_HEIGHT);
 
-  const [currentSheetState, setCurrentSheetState] = useState<'collapsed' | 'half' | 'expanded'>('collapsed');
+  const [currentSheetState, setCurrentSheetState] = useState<'collapsed' | 'half' | 'expanded'>(
+    'collapsed'
+  );
 
   const snapTo = (targetHeight: number, stateName: 'collapsed' | 'half' | 'expanded') => {
     Animated.spring(sheetHeightAnim, {
@@ -277,22 +276,14 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
       </View>
 
       {/* 3. Floating Bottom Sheet Drawer with Native Swipe Gestures */}
-      <Animated.View
-        style={[
-          styles.bottomSheet,
-          { height: sheetHeightAnim },
-          shadows.floating,
-        ]}
-      >
+      <Animated.View style={[styles.bottomSheet, { height: sheetHeightAnim }, shadows.floating]}>
         {/* Swipe Handle Drag Area */}
         <View style={styles.sheetHandleArea} {...panResponder.panHandlers}>
           <View style={styles.dragHandleBar} />
 
           <View style={styles.sheetHeaderRow}>
             <View style={styles.sheetTitleGroup}>
-              <Text style={styles.sheetTitle}>
-                🚏 Nearby Transit ({mappedNearbyList.length})
-              </Text>
+              <Text style={styles.sheetTitle}>🚏 Nearby Transit ({mappedNearbyList.length})</Text>
               <Text style={styles.sheetSubtitle}>
                 {currentSheetState === 'collapsed'
                   ? '↕️ Swipe up to browse transit stops'
@@ -338,11 +329,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
             )}
 
             {mappedNearbyList.map((item) => (
-              <TransportCard
-                key={item.id}
-                item={item}
-                onPress={() => handleSelectFromList(item)}
-              />
+              <TransportCard key={item.id} item={item} onPress={() => handleSelectFromList(item)} />
             ))}
           </ScrollView>
         )}

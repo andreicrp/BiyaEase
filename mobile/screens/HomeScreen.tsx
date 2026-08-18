@@ -17,6 +17,7 @@ import { MapView } from '../components/maps/MapView';
 import { TransportCard } from '../components/routes/TransportCard';
 import { FareBadge } from '../components/common/FareBadge';
 import { TimeBadge } from '../components/common/TimeBadge';
+import { useJourney } from '../context/JourneyContext';
 import { transitApiService, ApiTransitStop, ApiPlace } from '../services/transitApiService';
 import {
   mockNearbyTransport,
@@ -33,6 +34,7 @@ interface HomeScreenProps {
   onSelectRecentTrip: (trip: RecentTrip) => void;
   onOpenNearby: () => void;
   onOpenProfile: () => void;
+  onOpenActiveJourney?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -41,7 +43,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSelectRecentTrip,
   onOpenNearby,
   onOpenProfile,
+  onOpenActiveJourney,
 }) => {
+  const { activeJourney, discardActiveJourney } = useJourney();
   const [nearbyStops, setNearbyStops] = useState<ApiTransitStop[]>([]);
   const [places, setPlaces] = useState<ApiPlace[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -75,6 +79,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, []);
 
+  const hasActiveJourney =
+    activeJourney && activeJourney.status !== 'completed' && activeJourney.status !== 'cancelled';
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Header Row */}
@@ -106,6 +113,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Active Journey Recovery / In-Progress Banner */}
+        {hasActiveJourney && (
+          <View style={[styles.activeJourneyCard, shadows.medium]}>
+            <View style={styles.activeJourneyHeader}>
+              <View style={styles.liveDot} />
+              <Text style={styles.activeJourneyTag}>ACTIVE COMMUTE IN PROGRESS</Text>
+              <TouchableOpacity
+                style={styles.discardPill}
+                onPress={discardActiveJourney}
+                accessibilityRole="button"
+                accessibilityLabel="Discard journey"
+              >
+                <Text style={styles.discardText}>✕ Discard</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.activeJourneyRoute}>
+              {activeJourney.origin.name || 'Origin'} →{' '}
+              {activeJourney.destination.name || 'Destination'}
+            </Text>
+
+            <Text style={styles.activeJourneyStepText} numberOfLines={1}>
+              Current Step {activeJourney.currentStepIndex + 1} of {activeJourney.steps.length}:{' '}
+              {activeJourney.steps[activeJourney.currentStepIndex]?.title}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.resumeButton}
+              onPress={onOpenActiveJourney}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Resume journey"
+            >
+              <Text style={styles.resumeButtonText}>Resume Navigation ➔</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Main Search Action Card */}
         <View style={styles.searchCardWrapper}>
           <SearchBar
@@ -277,6 +322,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  activeJourneyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    marginBottom: spacing.md,
+  },
+  activeJourneyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+    marginRight: 6,
+  },
+  activeJourneyTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  discardPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.cardAlt,
+  },
+  discardText: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
+  activeJourneyRoute: {
+    fontSize: typography.fontSize.md,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginTop: 2,
+  },
+  activeJourneyStepText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  resumeButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  resumeButtonText: {
+    color: colors.textInverse,
+    fontWeight: '800',
+    fontSize: typography.fontSize.xs,
   },
   searchCardWrapper: {
     backgroundColor: colors.surface,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, StatusBar } from 'react-native';
 import { colors } from '../constants/colors';
 import { MainTabType, BottomNavigation } from '../components/navigation/BottomNavigation';
+import { JourneyProvider, useJourney } from '../context/JourneyContext';
 
 // Screens
 import { SplashScreen } from '../screens/SplashScreen';
@@ -11,7 +12,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { RouteOptionsScreen } from '../screens/RouteOptionsScreen';
 import { RouteDetailsScreen } from '../screens/RouteDetailsScreen';
-import { NavigationScreen } from '../screens/NavigationScreen';
+import { ActiveJourneyScreen } from '../screens/ActiveJourneyScreen';
 import { NearbyScreen } from '../screens/NearbyScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -34,9 +35,10 @@ type AppFlowState =
   | 'navigation'
   | 'settings';
 
-export default function App(): React.JSX.Element {
+function MainApp(): React.JSX.Element {
   const [flowState, setFlowState] = useState<AppFlowState>('splash');
   const [activeTab, setActiveTab] = useState<MainTabType>('home');
+  const { startJourney } = useJourney();
 
   // Active Flow State Data
   const [selectedDestination, setSelectedDestination] = useState<
@@ -92,6 +94,7 @@ export default function App(): React.JSX.Element {
 
   const handleStartTrip = (route: Journey | RouteOption): void => {
     setSelectedRoute(route);
+    startJourney(route);
     setFlowState('navigation');
   };
 
@@ -152,7 +155,7 @@ export default function App(): React.JSX.Element {
   }
 
   if (flowState === 'navigation') {
-    return <NavigationScreen route={selectedRoute} onEndTrip={handleEndTrip} />;
+    return <ActiveJourneyScreen onExit={handleEndTrip} />;
   }
 
   if (flowState === 'settings') {
@@ -174,6 +177,7 @@ export default function App(): React.JSX.Element {
             onSelectRecentTrip={handleSelectRecentTrip}
             onOpenNearby={() => setActiveTab('nearby')}
             onOpenProfile={() => setActiveTab('profile')}
+            onOpenActiveJourney={() => setFlowState('navigation')}
           />
         )}
 
@@ -204,6 +208,14 @@ export default function App(): React.JSX.Element {
       {/* Persistent Bottom Tab Bar */}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </View>
+  );
+}
+
+export default function App(): React.JSX.Element {
+  return (
+    <JourneyProvider>
+      <MainApp />
+    </JourneyProvider>
   );
 }
 

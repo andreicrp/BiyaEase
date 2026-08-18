@@ -5,10 +5,11 @@ export const colors = {
   primaryLight: '#CCFBF1',
   primarySoft: '#F0FDFA',
 
-  // Brand Secondary
+  // Brand Secondary & Accent
   secondary: '#F4B942',
   secondaryDark: '#D89A16',
   secondaryLight: '#FEF3C7',
+  accent: '#F59E0B',
 
   // Neutrals & Surfaces
   background: '#F8FAFC',

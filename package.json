@@ -33,7 +33,8 @@
     "gtfs:test": "npm run gtfs:test --workspace=server",
     "map:test": "tsx mobile/utils/geoTestRunner.ts",
     "search:test": "tsx server/src/test/searchTestRunner.ts",
-    "routing:test": "tsx server/src/test/routingTestRunner.ts"
+    "routing:test": "tsx server/src/test/routingTestRunner.ts",
+    "journey:test": "tsx mobile/utils/journeyTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",
