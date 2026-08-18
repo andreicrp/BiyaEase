@@ -24,6 +24,9 @@ import { SelectedLocation } from '../types/search.types';
 import { Journey } from '../types/routing.types';
 import { mockRouteOptions } from '../data/mockData';
 
+const RNView = View as any;
+const RNStatusBar = StatusBar as any;
+
 type AppFlowState =
   | 'splash'
   | 'onboarding'
@@ -191,11 +194,11 @@ function MainApp(): React.JSX.Element {
 
   // Main Tab Navigation View
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+    <RNView style={styles.mainContainer}>
+      <RNStatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
       {/* Tab Screen Content */}
-      <View style={styles.tabContent}>
+      <RNView style={styles.tabContent}>
         {activeTab === 'home' && (
           <HomeScreen
             currentOriginName={activeOriginName}
@@ -234,11 +237,11 @@ function MainApp(): React.JSX.Element {
             onOpenSaved={() => setActiveTab('saved')}
           />
         )}
-      </View>
+      </RNView>
 
       {/* Persistent Bottom Tab Bar */}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-    </View>
+    </RNView>
   );
 }
 

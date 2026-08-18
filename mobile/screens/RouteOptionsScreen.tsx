@@ -18,7 +18,7 @@ import { Journey, JourneyMode, RouteRecommendation } from '../types/routing.type
 import { routingApiService } from '../services/routingApiService';
 
 interface RouteOptionsScreenProps {
-  origin?: string | { latitude: number; longitude: number; name?: string };
+  origin?: Destination | SelectedLocation | string | { latitude: number; longitude: number; name?: string };
   destination: Destination | SelectedLocation | string;
   onBack: () => void;
   onSelectRoute: (journey: Journey) => void;
