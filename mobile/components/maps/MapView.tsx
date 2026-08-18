@@ -1,5 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, PanResponder, LayoutChangeEvent, ViewStyle } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  View,
+  StyleSheet,
+  PanResponder,
+  LayoutChangeEvent,
+  ViewStyle,
+  Image,
+  Text,
+} from 'react-native';
 import { Coordinates, MapRegion, calculateRegionForCoordinates } from '../../utils/geoUtils';
 import { UserLocationMarker } from './UserLocationMarker';
 import { StopMarker } from './StopMarker';
@@ -52,9 +60,11 @@ interface MapViewProps {
 const DEFAULT_METRO_MANILA_REGION: MapRegion = {
   latitude: 14.6538,
   longitude: 121.0685,
-  latitudeDelta: 0.04,
-  longitudeDelta: 0.04,
+  latitudeDelta: 0.03,
+  longitudeDelta: 0.03,
 };
+
+const TILE_SIZE = 256;
 
 export const MapView: React.FC<MapViewProps> = ({
   initialRegion = DEFAULT_METRO_MANILA_REGION,
@@ -118,26 +128,85 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  // Convert lat/lng into viewport X, Y
-  const projectToPixels = (coord: Coordinates): { x: number; y: number } => {
-    const { width, height: h } = dimensions;
-    const minLat = currentRegion.latitude - currentRegion.latitudeDelta / 2;
-    const maxLat = currentRegion.latitude + currentRegion.latitudeDelta / 2;
-    const minLng = currentRegion.longitude - currentRegion.longitudeDelta / 2;
-    const maxLng = currentRegion.longitude + currentRegion.longitudeDelta / 2;
+  // Compute Web Mercator Zoom level (10 - 18)
+  const zoomLevel = useMemo(() => {
+    const delta = currentRegion.longitudeDelta || 0.03;
+    const z = Math.round(Math.log2(360 / delta));
+    return Math.max(11, Math.min(18, z));
+  }, [currentRegion.longitudeDelta]);
 
-    const x = ((coord.longitude - minLng) / (maxLng - minLng)) * width;
-    const y = ((maxLat - coord.latitude) / (maxLat - minLat)) * h;
+  // Web Mercator coordinate calculations
+  const numTiles = useMemo(() => Math.pow(2, zoomLevel), [zoomLevel]);
 
-    return { x, y };
+  const lat2tileY = (lat: number): number => {
+    const latRad = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
+    return ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * numTiles;
   };
 
-  // Zoom handling
+  const lng2tileX = (lng: number): number => {
+    return ((lng + 180) / 360) * numTiles;
+  };
+
+  const centerTileX = lng2tileX(currentRegion.longitude);
+  const centerTileY = lat2tileY(currentRegion.latitude);
+
+  const centerPixelX = centerTileX * TILE_SIZE;
+  const centerPixelY = centerTileY * TILE_SIZE;
+
+  const viewportTopLeftX = centerPixelX - dimensions.width / 2;
+  const viewportTopLeftY = centerPixelY - dimensions.height / 2;
+
+  // Project latitude/longitude coordinate to viewport pixel (X, Y)
+  const projectToPixels = (coord: Coordinates): { x: number; y: number } => {
+    const tileX = lng2tileX(coord.longitude);
+    const tileY = lat2tileY(coord.latitude);
+
+    const px = tileX * TILE_SIZE - viewportTopLeftX;
+    const py = tileY * TILE_SIZE - viewportTopLeftY;
+
+    return { x: px, y: py };
+  };
+
+  // Generate visible cartography map tiles (OpenStreetMap / CartoDB)
+  const visibleTiles = useMemo(() => {
+    const minTileX = Math.floor(viewportTopLeftX / TILE_SIZE);
+    const maxTileX = Math.floor((viewportTopLeftX + dimensions.width) / TILE_SIZE);
+    const minTileY = Math.floor(viewportTopLeftY / TILE_SIZE);
+    const maxTileY = Math.floor((viewportTopLeftY + dimensions.height) / TILE_SIZE);
+
+    const tiles: { key: string; url: string; left: number; top: number }[] = [];
+
+    for (let x = minTileX; x <= maxTileX; x++) {
+      for (let y = minTileY; y <= maxTileY; y++) {
+        if (y < 0 || y >= numTiles) continue;
+        const normalizedX = ((x % numTiles) + numTiles) % numTiles;
+        const left = x * TILE_SIZE - viewportTopLeftX;
+        const top = y * TILE_SIZE - viewportTopLeftY;
+
+        // OpenStreetMap Cartography tile server
+        const url = `https://tile.openstreetmap.org/${zoomLevel}/${normalizedX}/${y}.png`;
+
+        tiles.push({
+          key: `tile-${zoomLevel}-${normalizedX}-${y}`,
+          url,
+          left,
+          top,
+        });
+      }
+    }
+    return tiles;
+  }, [viewportTopLeftX, viewportTopLeftY, dimensions.width, dimensions.height, numTiles, zoomLevel]);
+
+  // Zoom controls
   const handleZoom = (factor: number) => {
+    const nextDelta = Math.max(
+      Math.min(currentRegion.longitudeDelta * factor, 0.25),
+      0.003
+    );
     const nextRegion: MapRegion = {
       ...currentRegion,
-      latitudeDelta: Math.max(Math.min(currentRegion.latitudeDelta * factor, 0.5), 0.002),
-      longitudeDelta: Math.max(Math.min(currentRegion.longitudeDelta * factor, 0.5), 0.002),
+      latitudeDelta: nextDelta,
+      longitudeDelta: nextDelta,
     };
     setCurrentRegion(nextRegion);
     onRegionChange?.(nextRegion);
@@ -148,15 +217,15 @@ export const MapView: React.FC<MapViewProps> = ({
       const nextRegion: MapRegion = {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
-        latitudeDelta: 0.025,
-        longitudeDelta: 0.025,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
       };
       setCurrentRegion(nextRegion);
       onRegionChange?.(nextRegion);
     }
   };
 
-  // Pan gesture tracking
+  // Smooth Pan Gestures
   const panStartRef = useRef<{ lat: number; lng: number }>({
     lat: currentRegion.latitude,
     lng: currentRegion.longitude,
@@ -193,7 +262,7 @@ export const MapView: React.FC<MapViewProps> = ({
     })
   ).current;
 
-  // Selected item handlers
+  // Selection handlers
   const handleStopPress = (stop: ApiTransitStop) => {
     setActivePlace(null);
     setActiveStop(stop);
@@ -210,16 +279,38 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <View
-      style={[styles.container, { height: typeof height === 'number' ? height : undefined }, style]}
+      style={[
+        styles.container,
+        { height: typeof height === 'number' ? height : undefined },
+        style,
+      ]}
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
-      {/* Background Cartographic Vector Grid */}
-      <View style={styles.mapGridCanvas}>
-        <View style={styles.gridOverlay} />
+      {/* 1. Real Street Cartography Map Tiles */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {visibleTiles.map((tile) => (
+          <Image
+            key={tile.key}
+            source={{ uri: tile.url }}
+            style={{
+              position: 'absolute',
+              left: tile.left,
+              top: tile.top,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+            }}
+            resizeMode="cover"
+          />
+        ))}
       </View>
 
-      {/* Render Polylines */}
+      {/* 2. Attribution Watermark */}
+      <View style={styles.attribution} pointerEvents="none">
+        <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+      </View>
+
+      {/* 3. Render PostGIS Route Polylines */}
       {polylines.map((poly) => (
         <RoutePolyline
           key={poly.id}
@@ -232,14 +323,13 @@ export const MapView: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* Render Place Markers */}
+      {/* 4. Render Landmark Place Markers */}
       {places.map((place) => {
         const pt = projectToPixels({
           latitude: place.latitude,
           longitude: place.longitude,
         });
 
-        // Hide if offscreen
         if (
           pt.x < -40 ||
           pt.x > dimensions.width + 40 ||
@@ -264,14 +354,13 @@ export const MapView: React.FC<MapViewProps> = ({
         );
       })}
 
-      {/* Render Stop Markers */}
+      {/* 5. Render Transit Stop Markers */}
       {stops.map((stop, idx) => {
         const pt = projectToPixels({
           latitude: stop.latitude,
           longitude: stop.longitude,
         });
 
-        // Hide if offscreen
         if (
           pt.x < -40 ||
           pt.x > dimensions.width + 40 ||
@@ -298,9 +387,8 @@ export const MapView: React.FC<MapViewProps> = ({
         );
       })}
 
-      {/* Render User GPS Location Marker */}
-      {showsUserLocation &&
-        userLocation &&
+      {/* 6. Render User GPS Location Marker */}
+      {showsUserLocation && userLocation && (
         (() => {
           const uPt = projectToPixels(userLocation);
           return (
@@ -308,9 +396,10 @@ export const MapView: React.FC<MapViewProps> = ({
               <UserLocationMarker size={18} />
             </View>
           );
-        })()}
+        })()
+      )}
 
-      {/* Map Control Buttons (Recenter / Zoom) */}
+      {/* 7. Map Controls (Recenter, Zoom In, Zoom Out) */}
       {showControls && (
         <MapControls
           onRecenter={handleRecenter}
@@ -319,7 +408,7 @@ export const MapView: React.FC<MapViewProps> = ({
         />
       )}
 
-      {/* Floating Stop Info Bottom Card */}
+      {/* 8. Floating Bottom Info Sheets */}
       {activeStop && (
         <StopInfoCard
           stop={activeStop}
@@ -330,7 +419,6 @@ export const MapView: React.FC<MapViewProps> = ({
         />
       )}
 
-      {/* Floating Place Info Bottom Card */}
       {activePlace && (
         <PlaceInfoCard
           place={activePlace}
@@ -347,22 +435,27 @@ export const MapView: React.FC<MapViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#E8ECF0',
     overflow: 'hidden',
     position: 'relative',
-  },
-  mapGridCanvas: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#E5E9EC',
-  },
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.15,
-    borderWidth: 1,
-    borderColor: '#94A3B8',
   },
   markerAbsolute: {
     position: 'absolute',
     zIndex: 20,
+  },
+  attribution: {
+    position: 'absolute',
+    left: 6,
+    bottom: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 3,
+    zIndex: 10,
+  },
+  attributionText: {
+    fontSize: 8,
+    color: '#64748B',
+    fontWeight: '600',
   },
 });
