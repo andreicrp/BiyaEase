@@ -231,6 +231,63 @@ export class RoutingRepository {
       edges,
     };
   }
+
+  /**
+   * Directly queries live GTFS transit routes, stops, fares, and geometries from PostgreSQL PostGIS database.
+   */
+  async findGTFSJourneys(
+    origin: { latitude: number; longitude: number; name?: string },
+    destination: { latitude: number; longitude: number; name?: string },
+    radiusMeters: number = 3000
+  ): Promise<any[]> {
+    const sql = `
+      SELECT DISTINCT ON (r.id)
+        r.id AS route_id,
+        r.name AS route_name,
+        r.code AS route_code,
+        tm.code AS mode_code,
+        COALESCE(r.route_color, tm.color, '#0F766E') AS mode_color,
+        s1.id AS from_stop_id,
+        s1.name AS from_stop_name,
+        s1.code AS from_stop_code,
+        s1.latitude AS from_lat,
+        s1.longitude AS from_lng,
+        s2.id AS to_stop_id,
+        s2.name AS to_stop_name,
+        s2.code AS to_stop_code,
+        s2.latitude AS to_lat,
+        s2.longitude AS to_lng,
+        st2.stop_sequence - st1.stop_sequence AS stops_count,
+        ROUND(ST_Distance(s1.location, s2.location)::numeric, 1) AS straight_distance_meters,
+        COALESCE(f.base_fare, 13) AS fare,
+        COALESCE(f.currency, 'PHP') AS currency,
+        ST_AsGeoJSON(sh.shape) AS shape_geojson
+      FROM stop_times st1
+      JOIN stop_times st2 ON st1.trip_id = st2.trip_id AND st2.stop_sequence > st1.stop_sequence
+      JOIN trips t ON t.id = st1.trip_id AND t.is_active = true
+      JOIN route_variants rv ON rv.id = t.route_variant_id AND rv.is_active = true
+      JOIN routes r ON r.id = rv.route_id AND r.is_active = true
+      JOIN transit_modes tm ON tm.id = r.mode_id
+      JOIN stops s1 ON s1.id = st1.stop_id AND s1.is_active = true
+      JOIN stops s2 ON s2.id = st2.stop_id AND s2.is_active = true
+      LEFT JOIN fares f ON f.route_id = r.id
+      LEFT JOIN shapes sh ON sh.route_variant_id = rv.id
+      WHERE ST_DWithin(s1.location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $5)
+        AND ST_DWithin(s2.location, ST_SetSRID(ST_MakePoint($4, $3), 4326)::geography, $5)
+      ORDER BY r.id, straight_distance_meters ASC
+      LIMIT 8;
+    `;
+
+    const res = await query<any>(sql, [
+      origin.latitude,
+      origin.longitude,
+      destination.latitude,
+      destination.longitude,
+      radiusMeters,
+    ]);
+
+    return res.rows;
+  }
 }
 
 export const routingRepository = new RoutingRepository();

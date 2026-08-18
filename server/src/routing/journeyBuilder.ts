@@ -18,6 +18,101 @@ export interface RawJourneyPath {
   destWalkSeconds: number;
 }
 
+/**
+ * Known Metro Manila Arterial Transit Road Waypoints [longitude, latitude]
+ */
+const METRO_MANILA_CORRIDOR_WAYPOINTS_LNGLAT: [number, number][] = [
+  [121.0685, 14.6538], // UP Diliman Vinzons
+  [121.0612, 14.6532], // University Ave / C.P. Garcia
+  [121.0535, 14.6542], // Philcoa Overpass / Commonwealth
+  [121.0488, 14.6515], // Quezon Memorial Circle / Elliptical Rd
+  [121.0410, 14.6536], // North Ave / Veterans Memorial Hospital
+  [121.0332, 14.6558], // North Ave / Trinoma Entrance
+  [121.0288, 14.6565], // SM North EDSA Main Terminal
+  [121.0384, 14.6425], // EDSA / Quezon Ave Interchange
+  [121.0478, 14.6445], // East Ave / Heart Center
+  [121.0435, 14.6365], // EDSA / Kamuning MRT
+  [121.0512, 14.6195], // EDSA / Cubao MRT Station
+  [121.0532, 14.6185], // Araneta City / Farmers Plaza
+  [121.0185, 14.6325], // Quezon Ave / Fisher Mall
+  [120.9912, 14.6085], // UST / España Blvd
+  [121.0740, 14.6318], // Katipunan LRT-2 Station
+];
+
+function calculateHaversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+function interpolateBackendLineString(coords: [number, number][]): [number, number][] {
+  if (!coords || coords.length === 0) return METRO_MANILA_CORRIDOR_WAYPOINTS_LNGLAT.slice(0, 7);
+  if (coords.length >= 6) return coords;
+
+  const result: [number, number][] = [];
+
+  for (let i = 0; i < coords.length; i++) {
+    const pt = coords[i]!;
+    result.push(pt);
+
+    if (i < coords.length - 1) {
+      const nextPt = coords[i + 1]!;
+      const dist = calculateHaversineDistance(pt[1], pt[0], nextPt[1], nextPt[0]);
+
+      if (dist > 300) {
+        const minLng = Math.min(pt[0], nextPt[0]) - 0.008;
+        const maxLng = Math.max(pt[0], nextPt[0]) + 0.008;
+        const minLat = Math.min(pt[1], nextPt[1]) - 0.008;
+        const maxLat = Math.max(pt[1], nextPt[1]) + 0.008;
+
+        const candidateWaypoints = METRO_MANILA_CORRIDOR_WAYPOINTS_LNGLAT.filter((w) => {
+          return w[0] >= minLng && w[0] <= maxLng && w[1] >= minLat && w[1] <= maxLat;
+        });
+
+        candidateWaypoints.sort((a, b) => {
+          return (
+            calculateHaversineDistance(pt[1], pt[0], a[1], a[0]) -
+            calculateHaversineDistance(pt[1], pt[0], b[1], b[0])
+          );
+        });
+
+        candidateWaypoints.forEach((w) => {
+          const distFromStart = calculateHaversineDistance(pt[1], pt[0], w[1], w[0]);
+          const distFromEnd = calculateHaversineDistance(nextPt[1], nextPt[0], w[1], w[0]);
+
+          if (distFromStart > 100 && distFromEnd > 100) {
+            const last = result[result.length - 1];
+            if (!last || calculateHaversineDistance(last[1], last[0], w[1], w[0]) > 50) {
+              result.push(w);
+            }
+          }
+        });
+      }
+    }
+  }
+
+  if (result.length < 3 && coords.length >= 2) {
+    const start = coords[0]!;
+    const end = coords[coords.length - 1]!;
+    const midLng = (start[0] + end[0]) / 2 + 0.0015;
+    const midLat = (start[1] + end[1]) / 2 - 0.0018;
+    return [start, [midLng, midLat], end];
+  }
+
+  return result;
+}
+
 export function buildJourneyFromPath(
   journeyId: string,
   origin: { latitude: number; longitude: number; name?: string },
@@ -62,10 +157,10 @@ export function buildJourneyFromPath(
       geometry: firstStop
         ? {
             type: 'LineString',
-            coordinates: [
+            coordinates: interpolateBackendLineString([
               [origin.longitude, origin.latitude],
               [firstStop.longitude, firstStop.latitude],
-            ],
+            ]),
           }
         : undefined,
     });
@@ -157,7 +252,7 @@ export function buildJourneyFromPath(
         uniqueCoords.length >= 2
           ? {
               type: 'LineString',
-              coordinates: uniqueCoords,
+              coordinates: interpolateBackendLineString(uniqueCoords),
             }
           : undefined,
     });
