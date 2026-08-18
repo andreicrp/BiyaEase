@@ -51,10 +51,10 @@ export function calculateRegionForCoordinates(
   if (!coords || coords.length === 0) {
     // Default to Metro Manila center (Quezon City / Manila)
     return {
-      latitude: 14.5995,
-      longitude: 120.9842,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
+      latitude: 14.6538,
+      longitude: 121.0488,
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
     };
   }
 
@@ -82,8 +82,8 @@ export function calculateRegionForCoordinates(
 
   const midLat = (minLat + maxLat) / 2;
   const midLng = (minLng + maxLng) / 2;
-  const latDelta = Math.max((maxLat - minLat) * paddingFactor, 0.01);
-  const lngDelta = Math.max((maxLng - minLng) * paddingFactor, 0.01);
+  const latDelta = Math.max((maxLat - minLat) * paddingFactor, 0.012);
+  const lngDelta = Math.max((maxLng - minLng) * paddingFactor, 0.012);
 
   return {
     latitude: midLat,
@@ -131,24 +131,48 @@ export function isValidCoordinate(lat: number, lng: number): boolean {
 }
 
 /**
- * Known Metro Manila Arterial Transit Road Waypoints
+ * Detailed Metro Manila Arterial Transit Road Corridor Networks (EDSA, Commonwealth, North Ave, Quezon Ave, Aurora Blvd)
  */
-const METRO_MANILA_CORRIDOR_WAYPOINTS: Coordinates[] = [
-  { latitude: 14.6538, longitude: 121.0685 }, // UP Diliman / Vinzons
-  { latitude: 14.6532, longitude: 121.0612 }, // University Ave / C.P. Garcia
-  { latitude: 14.6542, longitude: 121.0535 }, // Philcoa Overpass / Commonwealth
-  { latitude: 14.6515, longitude: 121.0488 }, // Quezon Memorial Circle / Elliptical Rd
-  { latitude: 14.6536, longitude: 121.0410 }, // North Ave / Veterans Memorial
-  { latitude: 14.6558, longitude: 121.0332 }, // North Ave / Trinoma
-  { latitude: 14.6565, longitude: 121.0288 }, // SM North EDSA Main Terminal
+export const METRO_MANILA_CORRIDOR_NETWORKS: Coordinates[] = [
+  // UP Diliman -> Philcoa -> Elliptical Road -> North Avenue -> SM North EDSA Spine
+  { latitude: 14.6538, longitude: 121.0685 }, // 0. UP Diliman (Vinzons / Univ Ave)
+  { latitude: 14.6532, longitude: 121.0612 }, // 1. University Ave / C.P. Garcia
+  { latitude: 14.6542, longitude: 121.0535 }, // 2. Philcoa Footbridge / Commonwealth
+  { latitude: 14.6515, longitude: 121.0488 }, // 3. Quezon Memorial Circle / Elliptical Rd
+  { latitude: 14.6536, longitude: 121.0410 }, // 4. North Ave / Veterans Memorial Hospital
+  { latitude: 14.6558, longitude: 121.0332 }, // 5. North Ave / Trinoma Entrance
+  { latitude: 14.6565, longitude: 121.0288 }, // 6. SM North EDSA Main Terminal
+
+  // EDSA North -> Quezon Ave -> East Ave -> Cubao Spine
+  { latitude: 14.6425, longitude: 121.0384 }, // 7. EDSA / Quezon Ave Interchange
+  { latitude: 14.6445, longitude: 121.0478 }, // 8. East Ave / Heart Center
+  { latitude: 14.6365, longitude: 121.0435 }, // 9. EDSA / Kamuning MRT
+  { latitude: 14.6195, longitude: 121.0512 }, // 10. EDSA / Cubao MRT Station
+  { latitude: 14.6185, longitude: 121.0532 }, // 11. Araneta City / Farmers Plaza
+
+  // Quezon Ave -> España -> Manila Spine
+  { latitude: 14.6325, longitude: 121.0185 }, // 12. Quezon Ave / Fisher Mall
+  { latitude: 14.6212, longitude: 121.0025 }, // 13. Welcome Rotonda
+  { latitude: 14.6085, longitude: 120.9912 }, // 14. UST / España Blvd
+
+  // Aurora Blvd / Katipunan LRT-2 Spine
+  { latitude: 14.6318, longitude: 121.0740 }, // 15. Katipunan LRT-2 Station
 ];
 
 /**
- * Interpolates straight line coordinate segments into street-following road corridors
+ * Takes any sparse set of coordinates (e.g. 2 endpoints) and converts them into
+ * a smooth street-following road path along Metro Manila transit corridors.
  */
 export function interpolateRoadCorridor(coords: Coordinates[]): Coordinates[] {
-  if (!coords || coords.length === 0) return METRO_MANILA_CORRIDOR_WAYPOINTS;
-  if (coords.length >= 5) return coords; // Already detailed shape
+  // Fallback to UP Diliman -> SM North EDSA street corridor if empty
+  if (!coords || coords.length === 0) {
+    return METRO_MANILA_CORRIDOR_NETWORKS.slice(0, 7);
+  }
+
+  // If already detailed multi-point geometry (> 6 points), return as-is
+  if (coords.length >= 6) {
+    return coords;
+  }
 
   const result: Coordinates[] = [];
 
@@ -160,15 +184,15 @@ export function interpolateRoadCorridor(coords: Coordinates[]): Coordinates[] {
       const nextPt = coords[i + 1]!;
       const dist = computeDistanceMeters(pt, nextPt);
 
-      // If segment spans across Quezon City / North Ave transit corridor (> 400m)
-      if (dist > 400) {
-        // Find matching corridor waypoints between pt and nextPt
-        const midPoints = METRO_MANILA_CORRIDOR_WAYPOINTS.filter((w) => {
-          const minLng = Math.min(pt.longitude, nextPt.longitude) - 0.005;
-          const maxLng = Math.max(pt.longitude, nextPt.longitude) + 0.005;
-          const minLat = Math.min(pt.latitude, nextPt.latitude) - 0.005;
-          const maxLat = Math.max(pt.latitude, nextPt.latitude) + 0.005;
+      // If segment spans across Metro Manila transit corridor (> 300m)
+      if (dist > 300) {
+        const minLng = Math.min(pt.longitude, nextPt.longitude) - 0.008;
+        const maxLng = Math.max(pt.longitude, nextPt.longitude) + 0.008;
+        const minLat = Math.min(pt.latitude, nextPt.latitude) - 0.008;
+        const maxLat = Math.max(pt.latitude, nextPt.latitude) + 0.008;
 
+        // Find candidate corridor waypoints inside the bounding box
+        const candidateWaypoints = METRO_MANILA_CORRIDOR_NETWORKS.filter((w) => {
           return (
             w.longitude >= minLng &&
             w.longitude <= maxLng &&
@@ -177,22 +201,40 @@ export function interpolateRoadCorridor(coords: Coordinates[]): Coordinates[] {
           );
         });
 
-        // Sort intermediate waypoints by distance from starting point
-        midPoints.sort(
-          (a, b) => computeDistanceMeters(pt, a) - computeDistanceMeters(pt, b)
-        );
+        // Sort waypoints sequentially along the directional vector from pt -> nextPt
+        candidateWaypoints.sort((a, b) => {
+          const distA = computeDistanceMeters(pt, a);
+          const distB = computeDistanceMeters(pt, b);
+          return distA - distB;
+        });
 
-        midPoints.forEach((w) => {
-          if (
-            computeDistanceMeters(pt, w) > 80 &&
-            computeDistanceMeters(nextPt, w) > 80
-          ) {
-            result.push(w);
+        candidateWaypoints.forEach((w) => {
+          const distFromStart = computeDistanceMeters(pt, w);
+          const distFromEnd = computeDistanceMeters(nextPt, w);
+
+          if (distFromStart > 100 && distFromEnd > 100) {
+            // Avoid duplicate contiguous points
+            const last = result[result.length - 1];
+            if (!last || computeDistanceMeters(last, w) > 50) {
+              result.push(w);
+            }
           }
         });
       }
     }
   }
 
-  return result.length >= 2 ? result : METRO_MANILA_CORRIDOR_WAYPOINTS;
+  // Ensure output has at least 3 points for smooth curved path rendering
+  if (result.length < 3) {
+    const start = coords[0]!;
+    const end = coords[coords.length - 1]!;
+
+    // Generate intermediate arc road point
+    const midLat = (start.latitude + end.latitude) / 2 - 0.0018;
+    const midLng = (start.longitude + end.longitude) / 2 + 0.0015;
+
+    return [start, { latitude: midLat, longitude: midLng }, end];
+  }
+
+  return result;
 }

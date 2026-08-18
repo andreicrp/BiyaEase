@@ -91,48 +91,42 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
       const fallbackPoints: Coordinates[] = legacyOption.steps
         .filter((s) => s.coordinates)
         .map((s) => s.coordinates!);
-      
-      const stopsData: ApiTransitStop[] = [
-        {
-          id: 'step-stop-0',
-          name: legacyOption.steps[0]?.originStop || 'UP Diliman Campus',
-          code: 'BOARD-1',
-          latitude: 14.6538,
-          longitude: 121.0685,
-          mode: 'jeepney',
-        },
-        {
-          id: 'step-stop-1',
-          name: 'Philcoa Terminal / Commonwealth',
-          code: 'TRANSFER',
-          latitude: 14.6542,
-          longitude: 121.0535,
-          mode: 'jeepney',
-        },
-        {
-          id: 'step-stop-2',
-          name: legacyOption.steps[legacyOption.steps.length - 1]?.destinationStop || 'SM North EDSA Terminal',
-          code: 'ALIGHT',
-          latitude: 14.6565,
-          longitude: 121.0288,
-          mode: 'bus',
-        },
-      ];
+
+      const stopsData: ApiTransitStop[] = legacyOption.steps.map((s, idx) => ({
+        id: `step-stop-${idx}`,
+        name: s.originStop || s.title,
+        code: `STOP-${idx + 1}`,
+        latitude: s.coordinates?.latitude || (14.6538 - idx * 0.001),
+        longitude: s.coordinates?.longitude || (121.0685 - idx * 0.01),
+        mode: s.mode,
+      }));
 
       setRouteCoordinates(interpolateRoadCorridor(fallbackPoints));
       setRouteStops(stopsData);
     }
   }, [journey, legacyOption]);
 
-  const polyline: MapPolylineItem = React.useMemo(
-    () => ({
+  const polyline: MapPolylineItem = React.useMemo(() => {
+    const coordsToUse =
+      routeCoordinates.length >= 3
+        ? routeCoordinates
+        : [
+            { latitude: 14.6538, longitude: 121.0685 },
+            { latitude: 14.6532, longitude: 121.0612 },
+            { latitude: 14.6542, longitude: 121.0535 },
+            { latitude: 14.6515, longitude: 121.0488 },
+            { latitude: 14.6536, longitude: 121.0410 },
+            { latitude: 14.6558, longitude: 121.0332 },
+            { latitude: 14.6565, longitude: 121.0288 },
+          ];
+
+    return {
       id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
-      coordinates: interpolateRoadCorridor(routeCoordinates),
+      coordinates: interpolateRoadCorridor(coordsToUse),
       color: colors.primary,
       strokeWidth: 5,
-    }),
-    [journey?.id, legacyOption?.id, routeCoordinates]
-  );
+    };
+  }, [journey?.id, legacyOption?.id, routeCoordinates]);
 
   const getModeEmoji = (mode: JourneyMode | string): string => {
     switch (mode) {
