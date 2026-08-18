@@ -17,7 +17,8 @@ import { PlaceMarker } from './PlaceMarker';
 import { RoutePolyline } from './RoutePolyline';
 import { MapControls } from './MapControls';
 import { StopInfoCard } from './StopInfoCard';
-import { PlaceInfoCard } from './PlaceInfoCard';
+import { ApiTransitStop, ApiPlace } from '../../services/transitApiService';
+
 const RNView = View as any;
 const RNText = Text as any;
 const RNImage = Image as any;
