@@ -75,7 +75,7 @@ const DEFAULT_METRO_MANILA_REGION: MapRegion = {
 };
 
 const TILE_SIZE = 256;
-const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
+const GOOGLE_MAPS_SUBDOMAINS = ['mt0', 'mt1', 'mt2', 'mt3'];
 
 function extractTouchData(evt?: any): {
   count: number;
@@ -274,9 +274,9 @@ export const MapView: React.FC<MapViewProps> = ({
         const left = x * TILE_SIZE - viewportTopLeftX;
         const top = y * TILE_SIZE - viewportTopLeftY;
 
-        // Subdomain load balancing for fast CDN delivery
-        const s = CARTO_SUBDOMAINS[Math.abs(x + y) % CARTO_SUBDOMAINS.length];
-        const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoomLevel}/${normalizedX}/${y}.png`;
+        // Subdomain load balancing for fast Google CDN delivery
+        const s = GOOGLE_MAPS_SUBDOMAINS[Math.abs(x + y) % GOOGLE_MAPS_SUBDOMAINS.length];
+        const url = `https://${s}.google.com/vt/lyrs=m&x=${normalizedX}&y=${y}&z=${zoomLevel}`;
 
         tiles.push({
           key: `tile-${zoomLevel}-${normalizedX}-${y}`,
@@ -532,7 +532,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* 2. Attribution Watermark */}
       <RNView style={styles.attribution} pointerEvents="none">
-        <RNText style={styles.attributionText}>© CARTO © OpenStreetMap</RNText>
+        <RNText style={styles.attributionText}>Map data © Google</RNText>
       </RNView>
 
       {/* 3. Render PostGIS Route Polylines */}
