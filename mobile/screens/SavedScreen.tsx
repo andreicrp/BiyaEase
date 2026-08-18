@@ -1,153 +1,67 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
-import { spacing, borderRadius, shadows } from '../constants/spacing';
-import { AppHeader } from '../components/common/AppHeader';
-import { SavedPlaceCard } from '../components/routes/SavedPlaceCard';
-import { EmptyState } from '../components/common/EmptyState';
-import { PrimaryButton } from '../components/common/PrimaryButton';
-import { FareBadge } from '../components/common/FareBadge';
-import { TimeBadge } from '../components/common/TimeBadge';
-import { mockSavedPlaces, mockSavedRoutes } from '../data/mockData';
-import { SavedPlace, SavedRoute } from '../types/index';
+import { spacing, borderRadius } from '../constants/spacing';
+import { SavedPlacesScreen } from './SavedPlacesScreen';
+import { FavoriteRoutesScreen } from './FavoriteRoutesScreen';
+import { SelectedLocation } from '../types/search.types';
+import { SavedLocationReference } from '../types/savedData.types';
+
+const RNView = View as any;
+const RNText = Text as any;
+const RNTouchableOpacity = TouchableOpacity as any;
 
 interface SavedScreenProps {
-  onSelectPlace?: (place: SavedPlace) => void;
-  onSelectRoute?: (route: SavedRoute) => void;
+  onSelectAsOrigin?: (location: SelectedLocation) => void;
+  onSelectAsDestination?: (location: SelectedLocation) => void;
+  onLaunchFavoriteRoute?: (locations: { origin: SavedLocationReference; destination: SavedLocationReference }) => void;
 }
 
-export const SavedScreen: React.FC<SavedScreenProps> = ({ onSelectPlace, onSelectRoute }) => {
+export const SavedScreen: React.FC<SavedScreenProps> = ({
+  onSelectAsOrigin,
+  onSelectAsDestination,
+  onLaunchFavoriteRoute,
+}) => {
   const [activeTab, setActiveTab] = useState<'places' | 'routes'>('places');
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(mockSavedPlaces);
-  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>(mockSavedRoutes);
-
-  const handleAddPlace = (): void => {
-    const newPlace: SavedPlace = {
-      id: `custom-${Date.now()}`,
-      name: 'Katipunan Hub',
-      address: 'Katipunan Ave cor. Aurora Blvd, QC',
-      type: 'other',
-      customIcon: '⭐',
-    };
-    setSavedPlaces((prev) => [newPlace, ...prev]);
-    Alert.alert('✅ Saved Place Added', 'Katipunan Hub has been bookmarked to your saved places.');
-  };
-
-  const handleDeletePlace = (place: SavedPlace): void => {
-    setSavedPlaces((prev) => prev.filter((p) => p.id !== place.id));
-  };
-
-  const handleDeleteRoute = (route: SavedRoute): void => {
-    setSavedRoutes((prev) => prev.filter((r) => r.id !== route.id));
-  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <AppHeader title="Saved Bookmarks" subtitle="Quick Access Places & Routes" />
-
-      {/* Segmented Control Tabs */}
-      <View style={styles.segmentedControl}>
-        <TouchableOpacity
-          style={[styles.segmentBtn, activeTab === 'places' && styles.activeSegmentBtn]}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top Segment Switcher Bar */}
+      <RNView style={styles.tabBarContainer}>
+        <RNTouchableOpacity
+          style={[styles.tabButton, activeTab === 'places' && styles.tabButtonActive]}
           onPress={() => setActiveTab('places')}
-          activeOpacity={0.7}
+          accessibilityLabel="View Saved Places"
         >
-          <Text style={[styles.segmentText, activeTab === 'places' && styles.activeSegmentText]}>
-            Saved Places ({savedPlaces.length})
-          </Text>
-        </TouchableOpacity>
+          <RNText style={[styles.tabButtonText, activeTab === 'places' && styles.tabButtonTextActive]}>
+            📍 Saved Places
+          </RNText>
+        </RNTouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.segmentBtn, activeTab === 'routes' && styles.activeSegmentBtn]}
+        <RNTouchableOpacity
+          style={[styles.tabButton, activeTab === 'routes' && styles.tabButtonActive]}
           onPress={() => setActiveTab('routes')}
-          activeOpacity={0.7}
+          accessibilityLabel="View Favorite Routes"
         >
-          <Text style={[styles.segmentText, activeTab === 'routes' && styles.activeSegmentText]}>
-            Saved Routes ({savedRoutes.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <RNText style={[styles.tabButtonText, activeTab === 'routes' && styles.tabButtonTextActive]}>
+            ⭐ Favorite Routes
+          </RNText>
+        </RNTouchableOpacity>
+      </RNView>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Screen Body */}
+      <RNView style={styles.body}>
         {activeTab === 'places' ? (
-          <>
-            <View style={styles.actionHeaderRow}>
-              <Text style={styles.sectionTitle}>MY SAVED LOCATIONS</Text>
-              <PrimaryButton title="+ Add Saved Place" onPress={handleAddPlace} size="sm" />
-            </View>
-
-            {savedPlaces.length === 0 ? (
-              <EmptyState
-                title="No saved places yet"
-                description="Save your Home, Work, or favorite hangouts for instant commute calculations."
-                actionLabel="+ Add New Place"
-                onAction={handleAddPlace}
-              />
-            ) : (
-              savedPlaces.map((place) => (
-                <SavedPlaceCard
-                  key={place.id}
-                  place={place}
-                  onPress={(p) => onSelectPlace?.(p)}
-                  onDelete={handleDeletePlace}
-                />
-              ))
-            )}
-          </>
+          <SavedPlacesScreen
+            onSelectAsOrigin={onSelectAsOrigin}
+            onSelectAsDestination={onSelectAsDestination}
+          />
         ) : (
-          <>
-            <View style={styles.actionHeaderRow}>
-              <Text style={styles.sectionTitle}>FREQUENT COMMUTE ROUTES</Text>
-            </View>
-
-            {savedRoutes.length === 0 ? (
-              <EmptyState
-                title="No saved routes"
-                description="Bookmark your daily commute itineraries for one-tap navigation."
-              />
-            ) : (
-              savedRoutes.map((route) => (
-                <TouchableOpacity
-                  key={route.id}
-                  style={[styles.routeItem, shadows.subtle]}
-                  onPress={() => onSelectRoute?.(route)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.routeHeader}>
-                    <Text style={styles.routePath}>
-                      {route.origin} → {route.destination}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteRoute(route)}
-                      style={styles.deleteBtn}
-                    >
-                      <Text style={styles.deleteBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.routeMetricsRow}>
-                    <TimeBadge durationMinutes={route.durationMinutes} size="sm" />
-                    <View style={{ marginLeft: 8 }}>
-                      <FareBadge fare={route.fare} size="sm" />
-                    </View>
-                    <Text style={styles.transfersTag}>
-                      {route.transfersCount === 0
-                        ? 'Direct ride'
-                        : `${route.transfersCount} transfer`}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
+          <FavoriteRoutesScreen onLaunchRoute={onLaunchFavoriteRoute} />
         )}
-      </ScrollView>
+      </RNView>
     </SafeAreaView>
   );
 };
@@ -157,91 +71,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  segmentedControl: {
+  tabBarContainer: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    padding: spacing.xs,
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  segmentBtn: {
+  tabButton: {
     flex: 1,
     paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
+    marginHorizontal: 2,
+    minHeight: 44,
   },
-  activeSegmentBtn: {
+  tabButtonActive: {
     backgroundColor: colors.primary,
   },
-  segmentText: {
+  tabButtonText: {
     fontSize: typography.fontSize.xs,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textSecondary,
   },
-  activeSegmentText: {
-    color: colors.textInverse,
-    fontWeight: '700',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.huge,
-  },
-  actionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.xxs,
+  tabButtonTextActive: {
+    color: '#FFFFFF',
     fontWeight: '800',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
   },
-  routeItem: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  routeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  routePath: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  body: {
     flex: 1,
-  },
-  deleteBtn: {
-    padding: 4,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '700',
-  },
-  routeMetricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  transfersTag: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    marginLeft: spacing.md,
-    fontWeight: '500',
   },
 });

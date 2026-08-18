@@ -17,6 +17,7 @@ import { MapView } from '../components/maps/MapView';
 import { TransportCard } from '../components/routes/TransportCard';
 import { FareBadge } from '../components/common/FareBadge';
 import { TimeBadge } from '../components/common/TimeBadge';
+import { useSavedData } from '../context/SavedDataContext';
 import { useJourney } from '../context/JourneyContext';
 import { transitApiService, ApiTransitStop, ApiPlace } from '../services/transitApiService';
 import {
@@ -25,7 +26,7 @@ import {
   mockSavedPlaces,
   mockUserProfile,
 } from '../data/mockData';
-import { Destination, SavedPlace, RecentTrip } from '../types/index';
+import { Destination, SavedPlace as LegacySavedPlace, RecentTrip } from '../types/index';
 import { locationService } from '../services/locationService';
 
 interface HomeScreenProps {
@@ -33,11 +34,12 @@ interface HomeScreenProps {
   onOpenSearch: () => void;
   onOpenOriginSearch?: () => void;
   onSelectDestination: (dest: Destination) => void;
-  onSelectSavedPlace: (place: SavedPlace) => void;
+  onSelectSavedPlace: (place: any) => void;
   onSelectRecentTrip: (trip: RecentTrip) => void;
   onOpenNearby: () => void;
   onOpenProfile: () => void;
   onOpenActiveJourney?: () => void;
+  onLaunchFavoriteRoute?: (locations: any) => void;
 }
 
 const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 }; // UP Diliman / Quezon City
@@ -51,8 +53,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenNearby,
   onOpenProfile,
   onOpenActiveJourney,
+  onLaunchFavoriteRoute,
 }) => {
   const { activeJourney, discardActiveJourney } = useJourney();
+  const { savedPlaces, favoriteRoutes, launchFavoriteRoute } = useSavedData();
+
   const [nearbyStops, setNearbyStops] = useState<ApiTransitStop[]>([]);
   const [places, setPlaces] = useState<ApiPlace[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -60,6 +65,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
 
   const originName = currentOriginName || locationService.getLocationName() || 'UP Diliman, Quezon City';
+
+  const homePlace = savedPlaces.find((p) => p.category === 'home');
+  const workPlace = savedPlaces.find((p) => p.category === 'work');
+  const displayQuickPlaces = savedPlaces.length > 0 ? savedPlaces.slice(0, 3) : mockSavedPlaces;
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>(() => {
     const last = locationService.getLastLocation();

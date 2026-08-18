@@ -226,8 +226,19 @@ function MainApp(): React.JSX.Element {
 
         {activeTab === 'saved' && (
           <SavedScreen
-            onSelectPlace={handleSelectSavedPlace}
-            onSelectRoute={handleSelectSavedRoute}
+            onSelectAsOrigin={(loc) => {
+              setSelectedOrigin({ ...loc, type: loc.type || 'place' });
+              setFlowState('route_options');
+            }}
+            onSelectAsDestination={(loc) => {
+              setSelectedDestination({ ...loc, type: loc.type || 'place' });
+              setFlowState('route_options');
+            }}
+            onLaunchFavoriteRoute={(locations) => {
+              setSelectedOrigin({ ...locations.origin, type: 'place' });
+              setSelectedDestination({ ...locations.destination, type: 'place' });
+              setFlowState('route_options');
+            }}
           />
         )}
 
@@ -245,11 +256,15 @@ function MainApp(): React.JSX.Element {
   );
 }
 
+import { SavedDataProvider } from '../context/SavedDataContext';
+
 export default function App(): React.JSX.Element {
   return (
-    <JourneyProvider>
-      <MainApp />
-    </JourneyProvider>
+    <SavedDataProvider>
+      <JourneyProvider>
+        <MainApp />
+      </JourneyProvider>
+    </SavedDataProvider>
   );
 }
 

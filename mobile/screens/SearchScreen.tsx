@@ -15,6 +15,7 @@ import { AppHeader } from '../components/common/AppHeader';
 import { SearchBar } from '../components/common/SearchBar';
 import { searchApiService } from '../services/searchApiService';
 import { locationService } from '../services/locationService';
+import { useSavedData } from '../context/SavedDataContext';
 import { SearchResult, SelectedLocation, RecentSearchItem } from '../types/search.types';
 import { Destination } from '../types/index';
 
@@ -29,6 +30,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   onBack,
   onSelectDestination,
 }) => {
+  const { savedPlaces } = useSavedData();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);

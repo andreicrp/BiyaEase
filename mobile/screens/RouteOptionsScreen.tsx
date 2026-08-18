@@ -45,6 +45,13 @@ function formatWalkDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+import { useSavedData } from '../context/SavedDataContext';
+import { Modal, TextInput, Alert } from 'react-native';
+
+const RNTouchableOpacity = TouchableOpacity as any;
+const RNModal = Modal as any;
+const RNTextInput = TextInput as any;
+
 export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
   origin = 'UP Diliman',
   destination,
@@ -52,17 +59,20 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
   onSelectRoute,
   onEditOrigin,
 }) => {
+  const { favoriteRoutes, saveRoute } = useSavedData();
+  const [saveModalJourney, setSaveModalJourney] = useState<Journey | null>(null);
+  const [customRouteName, setCustomRouteName] = useState<string>('');
+
   const originName = typeof origin === 'string' ? origin : origin.name || 'Current Location';
   const originCoords =
-    typeof origin === 'object' && origin.latitude
-      ? { latitude: origin.latitude, longitude: origin.longitude }
+    typeof origin === 'object' && (origin as any).latitude
+      ? { latitude: (origin as any).latitude, longitude: (origin as any).longitude }
       : { latitude: 14.6538, longitude: 121.0685 };
 
   const destinationName = typeof destination === 'string' ? destination : destination.name;
-
   const destinationCoords =
-    typeof destination === 'object' && 'latitude' in destination
-      ? { latitude: destination.latitude, longitude: destination.longitude }
+    typeof destination === 'object' && (destination as any).latitude
+      ? { latitude: (destination as any).latitude, longitude: (destination as any).longitude }
       : { latitude: 14.6565, longitude: 121.0288 };
 
   const [modeFilter, setModeFilter] = useState<ModeFilterOption>('all');
@@ -113,6 +123,43 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     originCoords.longitude,
     originName,
   ]);
+
+  const handleOpenSaveModal = (journey: Journey) => {
+    setSaveModalJourney(journey);
+    setCustomRouteName(`${originName} ➔ ${destinationName}`);
+  };
+
+  const handleConfirmSaveRoute = async () => {
+    if (!saveModalJourney || !customRouteName.trim()) return;
+
+    const res = await saveRoute({
+      name: customRouteName.trim(),
+      origin: {
+        id: 'origin',
+        name: originName,
+        latitude: originCoords.latitude,
+        longitude: originCoords.longitude,
+      },
+      destination: {
+        id: 'dest',
+        name: destinationName,
+        latitude: destinationCoords.latitude,
+        longitude: destinationCoords.longitude,
+      },
+      journeyId: saveModalJourney.id,
+      modeSummary: saveModalJourney.modes.map((m) => m.toUpperCase()),
+      routeSummary: saveModalJourney.summary,
+      estimatedDurationMinutes: saveModalJourney.durationMinutes,
+      estimatedFare: saveModalJourney.fare,
+    });
+
+    if (res.success) {
+      Alert.alert('Route Saved! ⭐', `"${customRouteName}" has been saved to your Favorite Routes.`);
+      setSaveModalJourney(null);
+    } else {
+      Alert.alert('Error', res.error || 'Failed to save route');
+    }
+  };
 
   const modeFilterTabs: { key: ModeFilterOption; label: string; icon: string }[] = [
     { key: 'all', label: 'All Modes', icon: '🗺️' },
@@ -416,18 +463,56 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
                   ))}
                 </View>
 
-                {/* 4. Action Hint */}
+                {/* 4. Action Hint & Save Route Button */}
                 <View style={styles.cardFooter}>
                   <Text style={styles.summaryText} numberOfLines={1}>
                     {journey.summary}
                   </Text>
-                  <Text style={styles.viewRouteLink}>View Route Details ➔</Text>
+                  <RNTouchableOpacity
+                    style={styles.saveRouteBtn}
+                    onPress={(e: any) => {
+                      e.stopPropagation();
+                      handleOpenSaveModal(journey);
+                    }}
+                  >
+                    <Text style={styles.saveRouteBtnText}>⭐ Save Route</Text>
+                  </RNTouchableOpacity>
+                  <Text style={styles.viewRouteLink}>View Details ➔</Text>
                 </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       )}
+
+      {/* Save Route Modal */}
+      <RNModal visible={!!saveModalJourney} transparent animationType="slide" onRequestClose={() => setSaveModalJourney(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogModalContainer}>
+            <Text style={styles.dialogTitle}>Save Favorite Route ⭐</Text>
+            <Text style={styles.dialogSub}>
+              Save this commute option for 1-tap route recalculation.
+            </Text>
+
+            <Text style={styles.fieldLabel}>CUSTOM ROUTE NAME</Text>
+            <RNTextInput
+              style={styles.textInput}
+              value={customRouteName}
+              onChangeText={setCustomRouteName}
+              placeholder="e.g. Daily Commute, School Route"
+            />
+
+            <View style={styles.dialogActions}>
+              <RNTouchableOpacity style={styles.cancelBtn} onPress={() => setSaveModalJourney(null)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </RNTouchableOpacity>
+              <RNTouchableOpacity style={styles.saveBtn} onPress={handleConfirmSaveRoute}>
+                <Text style={styles.saveBtnText}>Save Favorite Route</Text>
+              </RNTouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </RNModal>
     </SafeAreaView>
   );
 };
@@ -687,6 +772,89 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.xs,
     marginTop: 2,
+  },
+  saveRouteBtn: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    marginRight: spacing.xs,
+  },
+  saveRouteBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+  },
+  dialogModalContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    margin: spacing.lg,
+    padding: spacing.lg,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  dialogSub: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  fieldLabel: {
+    fontSize: typography.fontSize.xxs,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  textInput: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.fontSize.xs,
+    color: colors.textPrimary,
+    backgroundColor: colors.cardAlt,
+    marginBottom: spacing.md,
+    minHeight: 44,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  cancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginRight: spacing.xs,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  saveBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   summaryText: {
     fontSize: 10,

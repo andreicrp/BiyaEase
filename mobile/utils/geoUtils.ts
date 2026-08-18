@@ -112,6 +112,7 @@ export function computeDistanceMeters(c1: Coordinates, c2: Coordinates): number 
 }
 
 export const calculateHaversineDistance = computeDistanceMeters;
+export const calculateDistanceMeters = computeDistanceMeters;
 
 /**
  * Formats distance in meters for display (e.g. "450 m" or "1.8 km")

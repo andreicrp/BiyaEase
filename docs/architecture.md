@@ -120,8 +120,8 @@ PHASE 8: Route Options & Advanced Journey Comparison (Complete)
 PHASE 9: Live Navigation & Real-Time Commute Alerts (Complete)
 └── Full turn-by-turn commute guidance, polyline progress matching, in-transit next-stop countdown, boarding/alighting/transfer/arrival alerts, haptic feedback, chime alerts, 3-strike off-route detection, and dynamic map camera tracking.
 
-PHASE 10: Saved Places
-└── Bookmark frequently visited locations (Home, Work, School, Favorites).
+PHASE 10: Saved Places & Favorite Routes (Complete)
+└── Local-first persistence for Home, Work, School, and Favorite locations, 1-tap route recalculation templates, strict category uniqueness (single Home/Work), deduplication, and decoupled repository layer for Phase 11 server synchronization.
 
 PHASE 11: Authentication
 └── User registration, login, secure session tokens (JWT), and profile management.

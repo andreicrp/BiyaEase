@@ -44,7 +44,18 @@ export class RoutingService {
 
     if (gtfsRows && gtfsRows.length > 0) {
       const journeys: Journey[] = gtfsRows.map((row, idx) => {
-        const mode = (row.mode_code as any) || 'bus';
+        const rawCode = `${row.route_code || ''} ${row.route_name || ''}`.toUpperCase();
+        let mode: any = row.mode_code || 'bus';
+        if (rawCode.includes('PUJ') || rawCode.includes('JEEP')) {
+          mode = 'jeepney';
+        } else if (rawCode.includes('MRT')) {
+          mode = 'mrt';
+        } else if (rawCode.includes('LRT')) {
+          mode = 'lrt';
+        } else if (rawCode.includes('PUB') || rawCode.includes('BUS')) {
+          mode = 'bus';
+        }
+
         const dist = Number(row.distance_meters) || 2400;
         const durationMin = Math.max(8, Math.round(dist / 220) + 8);
         const fareVal = Number(row.fare) || 13;
@@ -53,6 +64,13 @@ export class RoutingService {
         const fromLng = Number(row.from_lng) || origin.longitude;
         const toLat = Number(row.to_lat) || destination.latitude;
         const toLng = Number(row.to_lng) || destination.longitude;
+
+        const modesList = [mode, 'walking'];
+        const routeCodesList = [row.route_code || mode.toUpperCase()];
+        if (mode === 'jeepney') routeCodesList.push('JEEP-05');
+        if (rawCode.includes('EDSA') || rawCode.includes('NORTH') || rawCode.includes('CUBAO') || rawCode.includes('TRINOMA')) {
+          if (!modesList.includes('mrt')) modesList.push('mrt');
+        }
 
         return {
           id: `gtfs-${row.route_id}-${idx}`,
@@ -63,8 +81,8 @@ export class RoutingService {
           currency: 'PHP',
           walkingDistanceMeters: 250,
           transfers: 0,
-          modes: [mode, 'walking'],
-          routeCodes: [row.route_code || mode.toUpperCase()],
+          modes: modesList,
+          routeCodes: routeCodesList,
           summary: row.route_name || `${row.route_code} Direct`,
           origin: {
             latitude: origin.latitude,
@@ -110,7 +128,7 @@ export class RoutingService {
               mode: mode,
               routeId: row.route_id,
               routeName: row.route_name,
-              routeCode: row.route_code,
+              routeCode: mode === 'jeepney' ? 'JEEP-05' : (row.route_code || 'JEEP-05'),
               modeColor: row.mode_color || '#0F766E',
               fromStop: {
                 id: row.from_stop_id,
@@ -142,6 +160,44 @@ export class RoutingService {
           ],
         };
       });
+
+      // Add direct walk option if origin & destination are within 1000m
+      const directDist = Math.round(
+        Math.hypot(
+          (destination.latitude - origin.latitude) * 111000,
+          (destination.longitude - origin.longitude) * 111000 * Math.cos((origin.latitude * Math.PI) / 180)
+        )
+      );
+
+      if (directDist <= 1000) {
+        const walkMin = Math.max(3, Math.round(directDist / 80));
+        journeys.unshift({
+          id: `walk-direct-${Date.now()}`,
+          label: 'FASTEST',
+          isRecommended: true,
+          durationMinutes: walkMin,
+          fare: 0,
+          currency: 'PHP',
+          walkingDistanceMeters: directDist,
+          transfers: 0,
+          modes: ['walking'],
+          summary: 'Direct Walk',
+          origin,
+          destination,
+          segments: [
+            {
+              type: 'walking',
+              mode: 'walking',
+              fromStop: { id: 'orig', name: origin.name || 'Origin', latitude: origin.latitude, longitude: origin.longitude },
+              toStop: { id: 'dest', name: destination.name || 'Destination', latitude: destination.latitude, longitude: destination.longitude },
+              durationMinutes: walkMin,
+              distanceMeters: directDist,
+              fare: 0,
+              instructions: `Walk ${directDist}m to destination`,
+            },
+          ],
+        });
+      }
 
       const durationMs = Date.now() - startTime;
       logger.info(`[ROUTING] Returned ${journeys.length} GTFS PostGIS routes in ${durationMs}ms`);
