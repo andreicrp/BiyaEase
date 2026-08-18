@@ -96,7 +96,7 @@ class LocationService {
         return true;
       }
 
-      // Fallback for native runtime if navigator is undefined: default UP Diliman origin
+      // Fallback for native runtime: default UP Diliman origin (async to avoid render cycle locks)
       const defaultLoc: UserLocation = {
         latitude: 14.6538,
         longitude: 121.0685,
@@ -104,8 +104,12 @@ class LocationService {
         timestamp: new Date().toISOString(),
       };
       this.lastLocation = defaultLoc;
-      onLocation(defaultLoc);
       this.isWatching = true;
+      setTimeout(() => {
+        if (this.isWatching) {
+          onLocation(defaultLoc);
+        }
+      }, 0);
       return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to start GPS watcher';

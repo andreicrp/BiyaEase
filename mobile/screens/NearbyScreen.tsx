@@ -30,6 +30,8 @@ const COLLAPSED_HEIGHT = 80;
 const HALF_HEIGHT = Math.min(360, SCREEN_HEIGHT * 0.48);
 const EXPANDED_HEIGHT = Math.min(560, SCREEN_HEIGHT * 0.72);
 
+const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 };
+
 export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, onOpenSearch }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | TransitMode>('all');
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
@@ -43,7 +45,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
     longitudeDelta: 0.045,
   });
 
-  const userLocation = { latitude: 14.6538, longitude: 121.0685 };
+  const userLocation = DEFAULT_USER_LOCATION;
 
   // Animated height for bottom drawer with smooth gesture snapping
   const sheetHeightAnim = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;

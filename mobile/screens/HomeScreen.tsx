@@ -37,6 +37,8 @@ interface HomeScreenProps {
   onOpenActiveJourney?: () => void;
 }
 
+const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 }; // UP Diliman / Quezon City
+
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenSearch,
   onSelectSavedPlace,
@@ -52,7 +54,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
 
-  const userLocation = { latitude: 14.6538, longitude: 121.0685 }; // UP Diliman / Quezon City
+  const userLocation = DEFAULT_USER_LOCATION;
 
   useEffect(() => {
     let isMounted = true;

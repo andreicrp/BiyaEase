@@ -105,19 +105,22 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
     }
   }, [journey, legacyOption]);
 
-  const polyline: MapPolylineItem = {
-    id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
-    coordinates:
-      routeCoordinates.length >= 2
-        ? routeCoordinates
-        : [
-            { latitude: 14.6538, longitude: 121.0685 },
-            { latitude: 14.6519, longitude: 121.0718 },
-            { latitude: 14.6536, longitude: 121.0531 },
-          ],
-    color: colors.primary,
-    strokeWidth: 5,
-  };
+  const polyline: MapPolylineItem = React.useMemo(
+    () => ({
+      id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
+      coordinates:
+        routeCoordinates.length >= 2
+          ? routeCoordinates
+          : [
+              { latitude: 14.6538, longitude: 121.0685 },
+              { latitude: 14.6519, longitude: 121.0718 },
+              { latitude: 14.6536, longitude: 121.0531 },
+            ],
+      color: colors.primary,
+      strokeWidth: 5,
+    }),
+    [journey?.id, legacyOption?.id, routeCoordinates]
+  );
 
   const getModeEmoji = (mode: JourneyMode | string): string => {
     switch (mode) {

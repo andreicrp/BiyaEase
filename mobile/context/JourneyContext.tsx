@@ -1,46 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { ActiveJourney, JourneyStatus, JourneyStep, UserLocation } from '../types/journey.types';
+import {
+  ActiveJourney,
+  JourneyStatus,
+  JourneyStep,
+  UserLocation,
+} from '../types/journey.types';
+import { RouteOption } from '../types/index';
 import { Journey } from '../types/routing.types';
-import { RouteOption } from '../types';
 import { journeyAdapter } from '../services/journeyAdapter';
 import { locationService } from '../services/locationService';
 import { journeyProgressService, StepProgressResult } from '../services/journeyProgressService';
 
-const STORAGE_KEY = 'biyaease.activeJourney.v1';
-
-// Cross-platform local storage helper (supports Web localStorage and memory fallback)
-const storage = {
-  async getItem(key: string): Promise<string | null> {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        return window.localStorage.getItem(key);
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  },
-  async setItem(key: string, value: string): Promise<void> {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(key, value);
-      }
-    } catch {
-      // ignore
-    }
-  },
-  async removeItem(key: string): Promise<void> {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.removeItem(key);
-      }
-    } catch {
-      // ignore
-    }
-  },
-};
-
-interface JourneyContextType {
+export interface JourneyContextType {
   activeJourney: ActiveJourney | null;
   currentStep: JourneyStep | null;
   currentLocation: UserLocation | null;
@@ -54,9 +25,43 @@ interface JourneyContextType {
   confirmAlighted: () => void;
   completeJourney: () => void;
   cancelJourney: () => void;
-  updateLocation: (loc: UserLocation) => void;
+  updateLocation: (location: UserLocation) => void;
   discardActiveJourney: () => void;
 }
+
+const STORAGE_KEY = 'biyaease.activeJourney.v1';
+
+// In-memory or AsyncStorage mock
+const storage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch {
+      // Ignored
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // Ignored
+    }
+  },
+};
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
 
@@ -68,9 +73,22 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isTracking, setIsTracking] = useState<boolean>(false);
   const [hasRestoredJourney, setHasRestoredJourney] = useState<boolean>(false);
 
+  const activeJourneyRef = useRef<ActiveJourney | null>(null);
+  activeJourneyRef.current = activeJourney;
+
+  const currentStep: JourneyStep | null =
+    activeJourney &&
+    activeJourney.steps &&
+    activeJourney.currentStepIndex < activeJourney.steps.length
+      ? activeJourney.steps[activeJourney.currentStepIndex] || null
+      : null;
+
+  const currentStepRef = useRef<JourneyStep | null>(null);
+  currentStepRef.current = currentStep;
+
   const initialStepDistanceRef = useRef<number | undefined>(undefined);
 
-  // 1. Restore persisted journey on startup
+  // 1. Restore persisted journey on startup (mount only)
   useEffect(() => {
     let isMounted = true;
     async function restore() {
@@ -92,12 +110,10 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
               setCurrentLocation(parsed.currentLocation);
             }
           } else {
-            // Clean invalid or completed journey
             await storage.removeItem(STORAGE_KEY);
           }
         }
       } catch {
-        // Corrupted JSON -> remove safely
         await storage.removeItem(STORAGE_KEY);
       } finally {
         if (isMounted) setHasRestoredJourney(true);
@@ -120,59 +136,55 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else {
       storage.removeItem(STORAGE_KEY);
     }
-  }, [activeJourney]);
+  }, [activeJourney?.id, activeJourney?.status, activeJourney?.currentStepIndex]);
 
-  // Current step getter
-  const currentStep =
-    activeJourney &&
-    activeJourney.steps &&
-    activeJourney.currentStepIndex < activeJourney.steps.length
-      ? activeJourney.steps[activeJourney.currentStepIndex] || null
-      : null;
-
-  // 3. Location update handler
-  const handleLocationUpdate = useCallback(
-    (loc: UserLocation) => {
-      setCurrentLocation(loc);
-      setGpsError(null);
-
-      if (!activeJourney || !currentStep) return;
-
-      // Update location inside active journey
-      setActiveJourney((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          currentLocation: loc,
-        };
-      });
-
-      // Evaluate progress
-      const result = journeyProgressService.evaluateStepProgress(
-        loc,
-        currentStep,
-        initialStepDistanceRef.current
-      );
-      setProgressResult(result);
-
-      // Record initial distance for off-route tracking
-      if (initialStepDistanceRef.current === undefined && result.distanceMeters > 0) {
-        initialStepDistanceRef.current = result.distanceMeters;
+  // 3. Stable Location update handler (Zero re-renders / Zero passive effect loops)
+  const handleLocationUpdate = useCallback((loc: UserLocation) => {
+    setCurrentLocation((prevLoc) => {
+      if (
+        prevLoc &&
+        Math.abs(prevLoc.latitude - loc.latitude) < 0.00001 &&
+        Math.abs(prevLoc.longitude - loc.longitude) < 0.00001
+      ) {
+        return prevLoc;
       }
-    },
-    [activeJourney, currentStep]
-  );
+      return loc;
+    });
+    setGpsError(null);
 
-  // 4. Start watching GPS when journey is active
+    const currJourney = activeJourneyRef.current;
+    const currStep = currentStepRef.current;
+
+    if (!currJourney || !currStep) return;
+
+    // Evaluate progress
+    const result = journeyProgressService.evaluateStepProgress(
+      loc,
+      currStep,
+      initialStepDistanceRef.current
+    );
+    setProgressResult(result);
+
+    // Record initial distance for off-route tracking
+    if (initialStepDistanceRef.current === undefined && result.distanceMeters > 0) {
+      initialStepDistanceRef.current = result.distanceMeters;
+    }
+  }, []);
+
+  // 4. Start watching GPS only when journey starts or changes status
+  const journeyId = activeJourney?.id;
+  const journeyStatus = activeJourney?.status;
+
   useEffect(() => {
     if (
-      activeJourney &&
-      activeJourney.status !== 'completed' &&
-      activeJourney.status !== 'cancelled'
+      journeyId &&
+      journeyStatus &&
+      journeyStatus !== 'completed' &&
+      journeyStatus !== 'cancelled'
     ) {
       setIsTracking(true);
       locationService.startWatching(
-        (loc) => handleLocationUpdate(loc),
+        handleLocationUpdate,
         (err) => setGpsError(err)
       );
     } else {
@@ -184,7 +196,7 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       locationService.stopWatching();
     };
-  }, [activeJourney?.id, activeJourney?.status, handleLocationUpdate]);
+  }, [journeyId, journeyStatus, handleLocationUpdate]);
 
   // 5. Start a new journey
   const startJourney = useCallback((route: Journey | RouteOption | ActiveJourney) => {
@@ -204,16 +216,17 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 6. Advance step
   const advanceStep = useCallback(() => {
-    if (!activeJourney) return;
-    const nextIdx = activeJourney.currentStepIndex + 1;
+    const curr = activeJourneyRef.current;
+    if (!curr) return;
+    const nextIdx = curr.currentStepIndex + 1;
 
-    if (nextIdx >= activeJourney.steps.length) {
+    if (nextIdx >= curr.steps.length) {
       completeJourney();
       return;
     }
 
-    const nextStep = activeJourney.steps[nextIdx];
-    let nextStatus: JourneyStatus = activeJourney.status;
+    const nextStep = curr.steps[nextIdx];
+    let nextStatus: JourneyStatus = curr.status;
 
     if (nextStep) {
       if (nextStep.type === 'board') nextStatus = 'boarding';
@@ -242,18 +255,16 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         steps: updatedSteps,
       };
     });
-  }, [activeJourney]);
+  }, []);
 
   // 7. Transit confirmations
   const confirmBoarded = useCallback(() => {
-    if (!activeJourney) return;
     advanceStep();
-  }, [activeJourney, advanceStep]);
+  }, [advanceStep]);
 
   const confirmAlighted = useCallback(() => {
-    if (!activeJourney) return;
     advanceStep();
-  }, [activeJourney, advanceStep]);
+  }, [advanceStep]);
 
   // 8. Complete journey
   const completeJourney = useCallback(() => {
@@ -275,7 +286,6 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     locationService.stopWatching();
     setActiveJourney((prev) => (prev ? { ...prev, status: 'cancelled' } : null));
     storage.removeItem(STORAGE_KEY);
-    // Reset to null after cancellation
     setTimeout(() => {
       setActiveJourney(null);
       setProgressResult(null);

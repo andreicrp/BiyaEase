@@ -9,6 +9,7 @@ import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { ApiTransitStop, ApiPlace } from '../services/transitApiService';
+import { JourneyStep } from '../types/journey.types';
 
 interface ActiveJourneyScreenProps {
   onExit: () => void;
@@ -47,12 +48,12 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
     () =>
       activeJourney.steps
         .filter(
-          (s) =>
+          (s: JourneyStep) =>
             s.latitude !== undefined &&
             s.longitude !== undefined &&
             (s.type === 'board' || s.type === 'alight')
         )
-        .map((s) => ({
+        .map((s: JourneyStep) => ({
           id: String(s.fromStopId || s.toStopId || s.id),
           name: s.fromStopName || s.toStopName || s.title,
           code: s.routeCode || 'STOP',
