@@ -1,0 +1,47 @@
+{
+  "name": "biyaease-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BiyaEase - Philippine Public Transportation & Commute Navigation System",
+  "workspaces": [
+    "server",
+    "mobile",
+    "dashboard"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=server",
+    "dev:mobile": "npm run start --workspace=mobile",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "build": "npm run build --workspaces --if-present",
+    "build:server": "npm run build --workspace=server",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck:server": "npm run typecheck --workspace=server",
+    "typecheck:mobile": "npm run typecheck --workspace=mobile",
+    "typecheck:dashboard": "npm run typecheck --workspace=dashboard",
+    "lint": "eslint \"**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:postgis": "npm run db:postgis --workspace=server",
+    "db:migrate": "npm run db:migrate --workspace=server",
+    "db:seed": "npm run db:seed --workspace=server",
+    "db:reset": "npm run db:reset --workspace=server"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.10"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^9.21.0",
+    "prettier": "^3.5.3"
+  }
+}
