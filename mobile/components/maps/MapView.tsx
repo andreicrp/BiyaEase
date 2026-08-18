@@ -534,6 +534,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <RoutePolyline
           key={poly.id}
           coordinates={poly.coordinates}
+          project={projectToPixels}
           color={poly.color}
           strokeWidth={poly.strokeWidth || 5}
           region={currentRegion}

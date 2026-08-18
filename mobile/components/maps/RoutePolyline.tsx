@@ -10,6 +10,7 @@ interface RoutePolylineProps {
   region: MapRegion;
   width: number;
   height: number;
+  project?: (coord: Coordinates) => { x: number; y: number };
 }
 
 export const RoutePolyline: React.FC<RoutePolylineProps> = ({
@@ -19,28 +20,46 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
   region,
   width,
   height,
+  project,
 }) => {
   if (!coordinates || coordinates.length < 2 || width <= 0 || height <= 0) {
     return null;
   }
 
-  // Project geographic coordinates to pixel coordinates on the map view
-  const project = (coord: Coordinates): { x: number; y: number } => {
-    const latDelta = region.latitudeDelta || 0.05;
-    const lngDelta = region.longitudeDelta || 0.05;
+  // Web Mercator spherical projection matching MapView cartography tile system
+  const projectPoint = (coord: Coordinates): { x: number; y: number } => {
+    if (project) {
+      return project(coord);
+    }
 
-    const minLat = region.latitude - latDelta / 2;
-    const maxLat = region.latitude + latDelta / 2;
-    const minLng = region.longitude - lngDelta / 2;
-    const maxLng = region.longitude + lngDelta / 2;
+    const delta = region.longitudeDelta || 0.035;
+    const z = Math.round(Math.log2(360 / delta));
+    const zoomLevel = Math.max(10, Math.min(18, z));
+    const numTiles = Math.pow(2, zoomLevel);
 
-    const x = ((coord.longitude - minLng) / (maxLng - minLng)) * width;
-    const y = ((maxLat - coord.latitude) / (maxLat - minLat)) * height;
+    const lng2tileX = (lng: number) => ((lng + 180) / 360) * numTiles;
+    const lat2tileY = (lat: number) => {
+      const latRad = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
+      return ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * numTiles;
+    };
 
-    return { x, y };
+    const centerTileX = lng2tileX(region.longitude);
+    const centerTileY = lat2tileY(region.latitude);
+
+    const viewportTopLeftX = centerTileX * 256 - width / 2;
+    const viewportTopLeftY = centerTileY * 256 - height / 2;
+
+    const px = lng2tileX(coord.longitude) * 256 - viewportTopLeftX;
+    const py = lat2tileY(coord.latitude) * 256 - viewportTopLeftY;
+
+    return { x: px, y: py };
   };
 
-  const points = coordinates.map(project);
+  const points = coordinates
+    .map(projectPoint)
+    .filter((pt) => typeof pt.x === 'number' && typeof pt.y === 'number' && !isNaN(pt.x) && !isNaN(pt.y));
+
+  if (points.length < 2) return null;
 
   if (Platform.OS === 'web') {
     // Generate SVG path string for Web platform
@@ -55,7 +74,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
           <path
             d={pathData}
             fill="none"
-            stroke="rgba(0, 0, 0, 0.3)"
+            stroke="rgba(0, 0, 0, 0.25)"
             strokeWidth={strokeWidth + 2}
             strokeLinecap="round"
             strokeLinejoin="round"
