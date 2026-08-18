@@ -48,6 +48,8 @@ interface SavedDataProviderProps {
   favoriteRoutesRepo?: FavoriteRoutesRepository;
 }
 
+import { authApiService } from '../services/authApiService';
+
 export const SavedDataProvider: React.FC<SavedDataProviderProps> = ({
   children,
   savedPlacesRepo = localSavedPlacesRepository,
@@ -66,6 +68,15 @@ export const SavedDataProvider: React.FC<SavedDataProviderProps> = ({
       ]);
       setSavedPlaces(places);
       setFavoriteRoutes(routes);
+
+      // If user has active auth token, sync with cloud account in background
+      const token = authApiService.getToken();
+      if (token && places.length > 0) {
+        authApiService.syncPlaces(places);
+      }
+      if (token && routes.length > 0) {
+        authApiService.syncRoutes(routes);
+      }
     } catch (err) {
       console.error('[SAVED_DATA_CONTEXT] Failed to load saved data:', err);
     } finally {

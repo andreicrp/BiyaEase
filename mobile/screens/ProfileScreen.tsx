@@ -6,53 +6,65 @@ import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { Mascot } from '../components/common/Mascot';
-import { mockUserProfile } from '../data/mockData';
+
+import { useAuth } from '../context/AuthContext';
+
+const RNTouchableOpacity = TouchableOpacity as any;
 
 interface ProfileScreenProps {
   onOpenSettings: () => void;
   onOpenSaved: () => void;
+  onOpenLogin?: () => void;
+  onOpenRegister?: () => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenSettings, onOpenSaved }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  onOpenSettings,
+  onOpenSaved,
+  onOpenLogin,
+  onOpenRegister,
+}) => {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of your BiyaEase account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: () => logout(),
+      },
+    ]);
+  };
+
   const menuItems = [
     {
       id: 'saved',
       icon: '⭐',
       title: 'Saved Places & Routes',
-      subtitle: '3 places bookmarked',
+      subtitle: 'Manage your bookmarked locations',
       action: onOpenSaved,
     },
     {
       id: 'history',
       icon: '🕒',
       title: 'Trip History',
-      subtitle: `${mockUserProfile.totalTrips} completed commutes`,
+      subtitle: 'Completed commutes and fare summaries',
       action: () =>
         Alert.alert('Trip History', 'Displays your past commuter itineraries and fare summaries.'),
-    },
-    {
-      id: 'reports',
-      icon: '📢',
-      title: 'Community Reports',
-      subtitle: 'Crowdsourced transit updates (Phase 12)',
-      action: () =>
-        Alert.alert(
-          'Community Reports',
-          'Phase 12 will introduce crowdsourced traffic and transit reports.'
-        ),
     },
     {
       id: 'settings',
       icon: '⚙️',
       title: 'Settings & Preferences',
-      subtitle: 'Language, dark mode & walking',
+      subtitle: 'Language, dark mode & walking speed',
       action: onOpenSettings,
     },
     {
       id: 'about',
       icon: 'ℹ️',
       title: 'About BiyaEase',
-      subtitle: 'Version 0.1.0 (Phase 1 UI/UX Foundation)',
+      subtitle: 'Version 0.1.0 (Phase 11 Authentication & Cloud Sync)',
       action: () =>
         Alert.alert(
           'About BiyaEase',
@@ -60,6 +72,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenSettings, on
         ),
     },
   ];
+
+  const formattedDate = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '2026';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -71,50 +87,56 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenSettings, on
         showsVerticalScrollIndicator={false}
       >
         {/* User Card */}
-        <View style={[styles.profileCard, shadows.card]}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitials}>
-              {mockUserProfile.name
-                .split(' ')
-                .map((n) => n[0])
-                .join('')}
-            </Text>
-          </View>
+        {isAuthenticated && user ? (
+          <View style={[styles.profileCard, shadows.card]}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>
+                {user.displayName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase()}
+              </Text>
+            </View>
 
-          <Text style={styles.userName}>{mockUserProfile.name}</Text>
-          <Text style={styles.userEmail}>{mockUserProfile.email}</Text>
+            <Text style={styles.userName}>{user.displayName}</Text>
+            <Text style={styles.userEmail}>{user.email}</Text>
 
-          <View style={styles.memberBadge}>
-            <Text style={styles.memberText}>
-              🇵🇭 Metro Manila Commuter · Since {mockUserProfile.memberSince}
-            </Text>
+            <View style={styles.memberBadge}>
+              <Text style={styles.memberText}>🟢 Cloud Sync Active · Joined {formattedDate}</Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={[styles.profileCard, styles.guestCard, shadows.card]}>
+            <View style={[styles.avatarCircle, styles.guestAvatar]}>
+              <Text style={styles.avatarInitials}>👤</Text>
+            </View>
 
-        {/* Stats Row */}
-        <View style={[styles.statsRow, shadows.subtle]}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{mockUserProfile.totalTrips}</Text>
-            <Text style={styles.statLabel}>Trips Taken</Text>
+            <Text style={styles.userName}>Guest Commuter</Text>
+            <Text style={styles.userEmail}>Local offline storage active</Text>
+
+            <View style={styles.authBtnRow}>
+              <RNTouchableOpacity style={styles.signInBtn} onPress={onOpenLogin}>
+                <Text style={styles.signInBtnText}>Sign In</Text>
+              </RNTouchableOpacity>
+              <RNTouchableOpacity style={styles.registerBtn} onPress={onOpenRegister}>
+                <Text style={styles.registerBtnText}>Register</Text>
+              </RNTouchableOpacity>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>🚐 Jeepney</Text>
-            <Text style={styles.statLabel}>Top Transit</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>₱1,040</Text>
-            <Text style={styles.statLabel}>Est. Savings</Text>
-          </View>
-        </View>
+        )}
 
         {/* Mascot Banner */}
         <View style={styles.mascotBanner}>
           <Mascot size={52} mood="happy" showBadge={true} />
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>BiyaEase Navigator</Text>
-            <Text style={styles.bannerSub}>"Bawat biyahe, may kwento. Ingat palagi sa daan!"</Text>
+            <Text style={styles.bannerTitle}>BiyaEase Cloud Sync</Text>
+            <Text style={styles.bannerSub}>
+              {isAuthenticated
+                ? 'Your saved places and favorite routes are safely backed up to the cloud!'
+                : 'Sign in to automatically sync your saved places across your mobile devices.'}
+            </Text>
           </View>
         </View>
 
@@ -140,9 +162,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenSettings, on
                 <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
               </View>
 
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➔</Text>
             </TouchableOpacity>
           ))}
+
+          {isAuthenticated && (
+            <RNTouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Text style={styles.logoutBtnText}>🚪 Sign Out of Account</Text>
+            </RNTouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -210,6 +238,62 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xxs,
     fontWeight: '700',
     color: colors.primaryDark,
+  },
+  guestCard: {
+    backgroundColor: colors.cardAlt,
+    borderColor: colors.border,
+  },
+  guestAvatar: {
+    backgroundColor: '#9CA3AF',
+    borderColor: '#E5E7EB',
+  },
+  authBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  signInBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  signInBtnText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.xs,
+    fontWeight: '800',
+  },
+  registerBtn: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  registerBtnText: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  logoutBtnText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '800',
+    color: '#991B1B',
   },
   statsRow: {
     flexDirection: 'row',

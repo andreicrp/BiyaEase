@@ -5,6 +5,8 @@ import transitRoutes from './transit.routes.js';
 import placesRoutes from './places.routes.js';
 import searchRoutes from './search.routes.js';
 import routingRoutes from './routing.routes.js';
+import authRoutes from './auth.routes.js';
+import savedDataRoutes from './savedData.routes.js';
 
 const router = Router();
 
@@ -17,5 +19,7 @@ router.use('/api/transit', transitRoutes);
 router.use('/api/places', placesRoutes);
 router.use('/api/search', searchRoutes);
 router.use('/api/routes', routingRoutes);
+router.use('/api/auth', authRoutes);
+router.use('/api/saved', savedDataRoutes);
 
 export default router;

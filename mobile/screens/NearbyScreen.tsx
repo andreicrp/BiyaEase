@@ -147,7 +147,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
         if (isMounted) {
           setStops(data);
         }
-      } catch (_err) {
+      } catch {
         // Quiet non-blocking log for offline/fallback mode
         console.log('[Nearby] Map backend fallback active');
       } finally {

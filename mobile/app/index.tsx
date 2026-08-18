@@ -17,6 +17,8 @@ import { NearbyScreen } from '../screens/NearbyScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { RegisterScreen } from '../screens/RegisterScreen';
 
 // Types & Mock Data
 import { Destination, RouteOption, SavedPlace, SavedRoute, RecentTrip } from '../types/index';
@@ -36,7 +38,9 @@ type AppFlowState =
   | 'route_options'
   | 'route_details'
   | 'navigation'
-  | 'settings';
+  | 'settings'
+  | 'login'
+  | 'register';
 
 function MainApp(): React.JSX.Element {
   const [flowState, setFlowState] = useState<AppFlowState>('splash');
@@ -193,6 +197,26 @@ function MainApp(): React.JSX.Element {
     return <SettingsScreen onBack={handleBackToMain} />;
   }
 
+  if (flowState === 'login') {
+    return (
+      <LoginScreen
+        onBack={handleBackToMain}
+        onNavigateRegister={() => setFlowState('register')}
+        onSuccess={() => setFlowState('main')}
+      />
+    );
+  }
+
+  if (flowState === 'register') {
+    return (
+      <RegisterScreen
+        onBack={handleBackToMain}
+        onNavigateLogin={() => setFlowState('login')}
+        onSuccess={() => setFlowState('main')}
+      />
+    );
+  }
+
   // Main Tab Navigation View
   return (
     <RNView style={styles.mainContainer}>
@@ -247,6 +271,8 @@ function MainApp(): React.JSX.Element {
           <ProfileScreen
             onOpenSettings={() => setFlowState('settings')}
             onOpenSaved={() => setActiveTab('saved')}
+            onOpenLogin={() => setFlowState('login')}
+            onOpenRegister={() => setFlowState('register')}
           />
         )}
       </RNView>

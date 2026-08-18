@@ -99,7 +99,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           setNearbyStops(stopsData);
           setPlaces(placesData.slice(0, 4));
         }
-      } catch (_err) {
+      } catch {
         // Quiet non-blocking log for offline/fallback mode
         console.log('[Home] Map backend fallback active');
       } finally {
