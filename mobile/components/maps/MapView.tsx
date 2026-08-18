@@ -18,7 +18,9 @@ import { RoutePolyline } from './RoutePolyline';
 import { MapControls } from './MapControls';
 import { StopInfoCard } from './StopInfoCard';
 import { PlaceInfoCard } from './PlaceInfoCard';
-import { ApiTransitStop, ApiPlace } from '../../services/transitApiService';
+const RNView = View as any;
+const RNText = Text as any;
+const RNImage = Image as any;
 
 export interface MapMarkerItem {
   id: string;
@@ -492,7 +494,7 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   return (
-    <View
+    <RNView
       style={[
         styles.container,
         { height: typeof height === 'number' ? height : undefined },
@@ -503,9 +505,9 @@ export const MapView: React.FC<MapViewProps> = ({
       {...panResponder.panHandlers}
     >
       {/* 1. Real CartoDB Voyager Street Cartography Tiles */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <RNView style={StyleSheet.absoluteFill} pointerEvents="none">
         {visibleTiles.map((tile) => (
-          <Image
+          <RNImage
             key={tile.key}
             source={{ uri: tile.url }}
             style={{
@@ -518,12 +520,12 @@ export const MapView: React.FC<MapViewProps> = ({
             resizeMode="cover"
           />
         ))}
-      </View>
+      </RNView>
 
       {/* 2. Attribution Watermark */}
-      <View style={styles.attribution} pointerEvents="none">
-        <Text style={styles.attributionText}>© CARTO © OpenStreetMap</Text>
-      </View>
+      <RNView style={styles.attribution} pointerEvents="none">
+        <RNText style={styles.attributionText}>© CARTO © OpenStreetMap</RNText>
+      </RNView>
 
       {/* 3. Render PostGIS Route Polylines */}
       {polylines.map((poly) => (
@@ -555,7 +557,7 @@ export const MapView: React.FC<MapViewProps> = ({
         }
 
         return (
-          <View
+          <RNView
             key={`place-${place.id}`}
             style={[styles.markerAbsolute, { left: pt.x - 18, top: pt.y - 30 }]}
           >
@@ -565,7 +567,7 @@ export const MapView: React.FC<MapViewProps> = ({
               isSelected={activePlace?.id === place.id}
               onPress={() => handlePlacePress(place)}
             />
-          </View>
+          </RNView>
         );
       })}
 
@@ -586,7 +588,7 @@ export const MapView: React.FC<MapViewProps> = ({
         }
 
         return (
-          <View
+          <RNView
             key={`stop-${stop.id}`}
             style={[styles.markerAbsolute, { left: pt.x - 20, top: pt.y - 36 }]}
           >
@@ -598,7 +600,7 @@ export const MapView: React.FC<MapViewProps> = ({
               isSelected={activeStop?.id === stop.id}
               onPress={() => handleStopPress(stop)}
             />
-          </View>
+          </RNView>
         );
       })}
 
@@ -608,9 +610,9 @@ export const MapView: React.FC<MapViewProps> = ({
         (() => {
           const uPt = projectToPixels(userLocation);
           return (
-            <View style={[styles.markerAbsolute, { left: uPt.x - 18, top: uPt.y - 18 }]}>
+            <RNView style={[styles.markerAbsolute, { left: uPt.x - 18, top: uPt.y - 18 }]}>
               <UserLocationMarker size={18} />
-            </View>
+            </RNView>
           );
         })()}
 
@@ -643,7 +645,7 @@ export const MapView: React.FC<MapViewProps> = ({
           }}
         />
       )}
-    </View>
+    </RNView>
   );
 };
 
