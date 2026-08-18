@@ -69,22 +69,29 @@ const DEFAULT_METRO_MANILA_REGION: MapRegion = {
 const TILE_SIZE = 256;
 const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
 
-function getTouchDistance(evt: GestureResponderEvent): number | null {
-  const touches = evt.nativeEvent.touches;
-  if (!touches || touches.length < 2) return null;
+function extractTouchData(evt: GestureResponderEvent): {
+  count: number;
+  distance: number | null;
+  midpoint: { x: number; y: number } | null;
+} {
+  const touches = evt?.nativeEvent?.touches;
+  if (!touches || touches.length === 0) {
+    return { count: 0, distance: null, midpoint: null };
+  }
+  if (touches.length < 2) {
+    return { count: 1, distance: null, midpoint: null };
+  }
   const t0 = touches[0]!;
   const t1 = touches[1]!;
   const dx = t0.pageX - t1.pageX;
   const dy = t0.pageY - t1.pageY;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-function getTouchMidpoint(evt: GestureResponderEvent): { x: number; y: number } | null {
-  const touches = evt.nativeEvent.touches;
-  if (!touches || touches.length < 2) return null;
   return {
-    x: (touches[0]!.pageX + touches[1]!.pageX) / 2,
-    y: (touches[0]!.pageY + touches[1]!.pageY) / 2,
+    count: touches.length,
+    distance: Math.sqrt(dx * dx + dy * dy),
+    midpoint: {
+      x: (t0.pageX + t1.pageX) / 2,
+      y: (t0.pageY + t1.pageY) / 2,
+    },
   };
 }
 
@@ -316,35 +323,35 @@ export const MapView: React.FC<MapViewProps> = ({
 
       onPanResponderGrant: (evt: GestureResponderEvent) => {
         isGestureActiveRef.current = true;
-        const dist = getTouchDistance(evt);
-        const mid = getTouchMidpoint(evt);
+        const touchData = extractTouchData(evt);
         gestureStateRef.current = {
           lastTouchTime: Date.now(),
-          lastDistance: dist,
-          lastMidpoint: mid,
+          lastDistance: touchData.distance,
+          lastMidpoint: touchData.midpoint,
           startLat: regionRef.current.latitude,
           startLng: regionRef.current.longitude,
         };
       },
 
       onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
-        const touches = evt.nativeEvent.touches;
+        // Extract all touch properties synchronously BEFORE scheduling requestAnimationFrame
+        // (React Native nullifies/pools synthetic events after synchronous execution)
+        const { count, distance: currentDistance, midpoint: currentMid } = extractTouchData(evt);
+        const dx = gesture.dx;
+        const dy = gesture.dy;
         const reg = regionRef.current;
+        const { width, height: h } = dimensions;
 
-        // Cancel pending frame to avoid backlog
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
         }
 
-        // Schedule state update on next animation frame (silky 60fps without update depth errors)
         animFrameIdRef.current = requestAnimationFrame(() => {
           // 1. Smooth Progressive Two-Finger Pinch Zoom
-          if (touches && touches.length >= 2) {
-            const currentDistance = getTouchDistance(evt);
-            const currentMid = getTouchMidpoint(evt);
+          if (count >= 2 && currentDistance) {
             const lastDist = gestureStateRef.current.lastDistance;
 
-            if (currentDistance && lastDist && lastDist > 10) {
+            if (lastDist && lastDist > 10) {
               const rawRatio = lastDist / currentDistance;
               const dampedRatio = 1 + (rawRatio - 1) * 0.75;
               const newDelta = Math.max(Math.min(reg.longitudeDelta * dampedRatio, 0.35), 0.003);
@@ -355,8 +362,8 @@ export const MapView: React.FC<MapViewProps> = ({
               if (currentMid && gestureStateRef.current.lastMidpoint) {
                 const dMidX = currentMid.x - gestureStateRef.current.lastMidpoint.x;
                 const dMidY = currentMid.y - gestureStateRef.current.lastMidpoint.y;
-                newLng -= (dMidX / dimensions.width) * reg.longitudeDelta;
-                newLat += (dMidY / dimensions.height) * reg.latitudeDelta;
+                newLng -= (dMidX / width) * reg.longitudeDelta;
+                newLat += (dMidY / h) * reg.latitudeDelta;
               }
 
               gestureStateRef.current.lastDistance = currentDistance;
@@ -370,12 +377,13 @@ export const MapView: React.FC<MapViewProps> = ({
               });
               return;
             }
+            gestureStateRef.current.lastDistance = currentDistance;
+            gestureStateRef.current.lastMidpoint = currentMid;
           }
 
           // 2. Responsive One-Finger Smooth Pan
-          const { width, height: h } = dimensions;
-          const dLng = -(gesture.dx / width) * reg.longitudeDelta;
-          const dLat = (gesture.dy / h) * reg.latitudeDelta;
+          const dLng = -(dx / width) * reg.longitudeDelta;
+          const dLat = (dy / h) * reg.latitudeDelta;
 
           const nextLat = gestureStateRef.current.startLat + dLat;
           const nextLng = gestureStateRef.current.startLng + dLng;
