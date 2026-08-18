@@ -118,13 +118,28 @@ export const MapView: React.FC<MapViewProps> = ({
   const [activeStop, setActiveStop] = useState<ApiTransitStop | null>(null);
   const [activePlace, setActivePlace] = useState<ApiPlace | null>(null);
 
-  // Sync controlled state
+  // 1. Sync controlled region safely with value equality comparison (prevents infinite render loops)
   useEffect(() => {
     if (controlledRegion) {
-      setCurrentRegion(controlledRegion);
-    }
-  }, [controlledRegion]);
+      const prev = regionRef.current;
+      const isDifferent =
+        Math.abs(prev.latitude - controlledRegion.latitude) > 0.00001 ||
+        Math.abs(prev.longitude - controlledRegion.longitude) > 0.00001 ||
+        Math.abs(prev.latitudeDelta - controlledRegion.latitudeDelta) > 0.00001 ||
+        Math.abs(prev.longitudeDelta - controlledRegion.longitudeDelta) > 0.00001;
 
+      if (isDifferent) {
+        setCurrentRegion(controlledRegion);
+      }
+    }
+  }, [
+    controlledRegion?.latitude,
+    controlledRegion?.longitude,
+    controlledRegion?.latitudeDelta,
+    controlledRegion?.longitudeDelta,
+  ]);
+
+  // 2. Sync selected markers safely
   useEffect(() => {
     if (controlledSelectedStop !== undefined) {
       setActiveStop(controlledSelectedStop);
@@ -137,14 +152,18 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [controlledSelectedPlace]);
 
-  // Fit camera bounds if fitCoordinates are provided
+  // 3. Fit camera bounds safely by tracking coordinate fingerprint (prevents array identity loop)
+  const fitCoordsKey = useMemo(() => {
+    if (!fitCoordinates || fitCoordinates.length === 0) return '';
+    return fitCoordinates.map((c) => `${c.latitude.toFixed(4)},${c.longitude.toFixed(4)}`).join('|');
+  }, [fitCoordinates]);
+
   useEffect(() => {
     if (fitCoordinates && fitCoordinates.length > 0) {
       const fitted = calculateRegionForCoordinates(fitCoordinates);
       setCurrentRegion(fitted);
-      onRegionChange?.(fitted);
     }
-  }, [fitCoordinates, onRegionChange]);
+  }, [fitCoordsKey]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height: h } = e.nativeEvent.layout;
