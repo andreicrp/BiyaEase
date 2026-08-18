@@ -341,7 +341,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
+      onMoveShouldSetPanResponder: (_: GestureResponderEvent, gesture: PanResponderGestureState) =>
         Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3 || (gesture.numberActiveTouches || 0) >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
