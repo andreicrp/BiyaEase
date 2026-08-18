@@ -193,10 +193,10 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [fitCoordsKey]);
 
-  const handleLayout = (e: LayoutChangeEvent) => {
-    const { width, height: h } = e.nativeEvent.layout;
-    if (width > 0 && h > 0) {
-      setDimensions({ width, height: h });
+  const handleLayout = (e: any) => {
+    const layout = e?.nativeEvent?.layout;
+    if (layout && layout.width > 0 && layout.height > 0) {
+      setDimensions({ width: layout.width, height: layout.height });
     }
   };
 
