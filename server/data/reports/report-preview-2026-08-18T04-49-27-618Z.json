@@ -1,0 +1,20 @@
+{
+  "sourceName": "sample-philippines",
+  "datasetVersion": "preview",
+  "fileHash": "preview",
+  "status": "VALIDATED",
+  "importedAt": "2026-08-18T04:49:27.617Z",
+  "durationMs": 0,
+  "recordCounts": {
+    "agencies": 3,
+    "routes": 3,
+    "stops": 8,
+    "trips": 4,
+    "stop_times": 12,
+    "shapes": 2,
+    "services": 2
+  },
+  "errorCount": 0,
+  "warningCount": 0,
+  "issues": []
+}

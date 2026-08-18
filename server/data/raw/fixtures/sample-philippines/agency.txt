@@ -1,0 +1,4 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone
+AG-DOTR,"Department of Transportation",http://dotr.gov.ph,Asia/Manila,en,+63-2-8790-8300
+AG-MMDA,"Metro Manila Development Authority",http://mmda.gov.ph,Asia/Manila,en,136
+AG-UPTC,"UP Diliman Transport Cooperative",http://upd.edu.ph,Asia/Manila,en,+63-2-8981-8500

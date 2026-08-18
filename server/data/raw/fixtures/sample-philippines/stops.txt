@@ -1,0 +1,9 @@
+stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,location_type
+ST-UP-OVAL,UP-01,"UP Diliman Academic Oval","Waiting shed near sunken garden",14.6538,121.0685,0
+ST-UP-VINZONS,UP-02,"UP Vinzons Hall / Katipunan","Katipunan jeepney terminal gate",14.6519,121.0718,0
+ST-PHILCOA,QC-01,"Philcoa PUV Hub","Major transfer point for Commonwealth PUVs",14.6536,121.0531,0
+ST-MRT-NORTH,MRT-01,"North Avenue MRT Station","Station connected to Trinoma & SM North",14.6532,121.0322,0
+ST-MRT-QAVE,MRT-02,"Quezon Avenue MRT Station","Station connected to Eton Centris",14.6429,121.0384,0
+ST-MRT-CUBAO,MRT-04,"Araneta Center-Cubao MRT Station","Transfer station with LRT-2 Purple line",14.6196,121.0511,0
+ST-MRT-TAFT,MRT-13,"Taft Avenue MRT Station","Terminal station connected to LRT-1 EDSA",14.5377,121.0014,0
+ST-BUS-SMNORTH,BUS-01,"SM North EDSA Busway Stop","Median BRT pedestrian concourse",14.6569,121.0283,0

@@ -11,23 +11,34 @@ flowchart TD
     ClientMobile["📱 BiyaEase Mobile App\n(React Native / Expo)"]
     ClientWeb["💻 Admin Dashboard\n(React / Vite)"]
 
+    subgraph IngestionEngine ["GTFS & Transit Ingestion Engine (Phase 3)"]
+        Parser["Streaming CSV Parser"]
+        Validator["Feed & Coordinate Validator"]
+        Normalizer["Philippine Mode Mapper & Normalizer"]
+        Importer["Transactional Batch Importer & Deduplicator"]
+
+        Parser --> Validator --> Normalizer --> Importer
+    end
+
     subgraph BackendAPI ["BiyaEase API Gateway (Express / Node.js)"]
         Router["Express Routers"]
         Controllers["Controllers"]
         Middlewares["Middlewares (CORS, Error, Auth)"]
         Services["Domain Services"]
+        Repositories["Spatial Repositories"]
 
-        Router --> Middlewares --> Controllers --> Services
+        Router --> Middlewares --> Controllers --> Services --> Repositories
     end
 
-    subgraph DataLayer ["Data Storage & Geodata"]
+    subgraph DataLayer ["Data Storage & Geodata (Phase 2 + 3)"]
         Postgres[("PostgreSQL 16+")]
         PostGIS["PostGIS Spatial Engine"]
+        Sources["transit_sources & transit_datasets"]
         Postgres --- PostGIS
+        Postgres --- Sources
     end
 
-    subgraph FutureIntegrations ["Future Phase Engines (Phase 3+)"]
-        GTFS["GTFS Transit Feeds"]
+    subgraph FutureIntegrations ["Future Phase Engines (Phase 4+)"]
         MapsAPI["Google Maps Platform / Places API"]
         RoutingEngine["Multi-Modal Routing Engine"]
         Realtime["Real-time Vehicle Tracking / WebSockets"]
@@ -35,7 +46,8 @@ flowchart TD
 
     ClientMobile -->|REST / HTTPS| Router
     ClientWeb -->|REST / HTTPS| Router
-    Services --> Postgres
+    IngestionEngine --> Postgres
+    Repositories --> Postgres
     Services -.-> FutureIntegrations
 ```
 
@@ -55,7 +67,9 @@ Route (Request Routing & URL Mapping)
 - **Routes (`server/src/routes/`)**: Map URI patterns and HTTP verbs to controller methods. No business logic is placed directly in route definitions.
 - **Controllers (`server/src/controllers/`)**: Handle incoming HTTP requests, extract parameters, invoke domain services, and return standard JSON responses.
 - **Services (`server/src/services/`)**: Encapsulate pure business logic, calculations, route analysis, and transit data orchestration.
+- **Repositories (`server/src/repositories/`)**: Encapsulate parameterized SQL and PostGIS spatial queries (`ST_DWithin`, `ST_Distance`).
 - **Database (`server/src/database/`)**: Manage connection pooling (`pg`), PostGIS queries, parameterized SQL execution, and migrations.
+- **GTFS Ingestion (`server/src/gtfs/`)**: Parse, validate, normalize, and transactionally import transit feeds.
 
 ---
 
@@ -67,6 +81,7 @@ Route (Request Routing & URL Mapping)
 | **Admin Dashboard** | React, Vite, TypeScript        | Internal transit data & community reports management        |
 | **Backend API**     | Node.js, Express, TypeScript   | Scalable REST API gateway & service layer                   |
 | **Database**        | PostgreSQL, PostGIS            | Relational storage & geospatial indexing for transit routes |
+| **GTFS Ingestion**  | TypeScript, PostGIS            | Streaming CSV parser, validator & transactional importer    |
 | **Infrastructure**  | Railway                        | Containerized cloud deployment                              |
 | **Package Manager** | npm (Workspaces)               | Monorepo package management                                 |
 
@@ -75,17 +90,17 @@ Route (Request Routing & URL Mapping)
 ## 4. Phase Roadmap
 
 ```
-PHASE 0: Project Foundation (Current)
+PHASE 0: Project Foundation (Complete)
 └── Monorepo setup, server scaffolding, health check, DB connector, TypeScript & linting.
 
-PHASE 1: UI/UX Foundation
+PHASE 1: UI/UX Foundation (Complete)
 └── Mobile UI screens with mock data (Splash, Onboarding, Home, Search, Route Options, Details, Nav shell).
 
-PHASE 2: Database
+PHASE 2: Database (Complete)
 └── PostgreSQL schema, PostGIS geometry types, migrations for stops, routes, fares, and schedules.
 
-PHASE 3: GTFS Importer
-└── Import, parse, and validate Philippine GTFS feeds and transit schedule data.
+PHASE 3: GTFS Importer & Real Transit Data Foundation (Complete)
+└── Import, parse, validate, and store Philippine GTFS feeds and transit schedule data with provenance.
 
 PHASE 4: Map System
 └── Interactive vector maps integration (Google Maps SDK for React Native).

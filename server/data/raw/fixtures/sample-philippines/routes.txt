@@ -1,0 +1,4 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_color
+R-JEEP-05,AG-UPTC,05,"UP Campus - Philcoa","Traditional Jeepney passing UP Oval and Philcoa",715,F59E0B
+R-MRT-03,AG-DOTR,MRT-3,"MRT-3 Blue Line","Rapid Transit along EDSA from North Ave to Taft Ave",1,7C3AED
+R-BUS-EDSA,AG-MMDA,EDSA-BUS,"EDSA Busway Carousel","Dedicated Median BRT line from Monumento to PITX",3,2563EB

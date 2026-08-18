@@ -14,7 +14,11 @@
     "db:postgis": "tsx src/database/postgis.ts",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:seed": "tsx src/database/seed.ts",
-    "db:reset": "tsx src/database/reset.ts"
+    "db:reset": "tsx src/database/reset.ts",
+    "gtfs:validate": "tsx src/gtfs/index.ts validate",
+    "gtfs:import": "tsx src/gtfs/index.ts import",
+    "gtfs:report": "tsx src/gtfs/index.ts report",
+    "gtfs:test": "tsx src/gtfs/testRunner.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

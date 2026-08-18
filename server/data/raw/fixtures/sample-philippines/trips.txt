@@ -1,0 +1,5 @@
+route_id,service_id,trip_id,trip_headsign,direction_id,shape_id
+R-JEEP-05,SVC-DAILY,TRIP-JEEP-05-OUT,"Philcoa via UP Oval",0,SHP-JEEP-05
+R-JEEP-05,SVC-DAILY,TRIP-JEEP-05-IN,"UP Campus via Katipunan",1,SHP-JEEP-05
+R-MRT-03,SVC-DAILY,TRIP-MRT-03-SOUTH,"Taft Avenue",0,SHP-MRT-03
+R-BUS-EDSA,SVC-DAILY,TRIP-BUS-EDSA-SOUTH,"PITX via EDSA Carousel",0,SHP-MRT-03
