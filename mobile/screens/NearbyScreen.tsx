@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
@@ -24,6 +26,9 @@ interface NearbyScreenProps {
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const COLLAPSED_HEIGHT = 80;
+const HALF_HEIGHT = Math.min(360, SCREEN_HEIGHT * 0.48);
+const EXPANDED_HEIGHT = Math.min(560, SCREEN_HEIGHT * 0.72);
 
 export const NearbyScreen: React.FC<NearbyScreenProps> = ({
   onSelectTransport,
@@ -33,7 +38,6 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
-  const [sheetState, setSheetState] = useState<'collapsed' | 'half' | 'expanded'>('collapsed');
 
   const [mapRegion, setMapRegion] = useState<MapRegion>({
     latitude: 14.6538,
@@ -43,6 +47,69 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
   });
 
   const userLocation = { latitude: 14.6538, longitude: 121.0685 };
+
+  // Animated height for bottom drawer with smooth gesture snapping
+  const sheetHeightAnim = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
+  const currentHeightRef = useRef<number>(COLLAPSED_HEIGHT);
+
+  const [currentSheetState, setCurrentSheetState] = useState<'collapsed' | 'half' | 'expanded'>('collapsed');
+
+  const snapTo = (targetHeight: number, stateName: 'collapsed' | 'half' | 'expanded') => {
+    Animated.spring(sheetHeightAnim, {
+      toValue: targetHeight,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 14,
+    }).start();
+    currentHeightRef.current = targetHeight;
+    setCurrentSheetState(stateName);
+  };
+
+  // Swipe Up / Swipe Down PanResponder Gesture Handling
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
+      onPanResponderMove: (_, gesture) => {
+        const newHeight = currentHeightRef.current - gesture.dy;
+        if (newHeight >= COLLAPSED_HEIGHT - 20 && newHeight <= EXPANDED_HEIGHT + 20) {
+          sheetHeightAnim.setValue(newHeight);
+        }
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const movedDy = gesture.dy;
+        const currentH = currentHeightRef.current;
+
+        // Swiping Up (Negative dy)
+        if (movedDy < -25 || gesture.vy < -0.5) {
+          if (currentH <= COLLAPSED_HEIGHT + 40) {
+            snapTo(HALF_HEIGHT, 'half');
+          } else {
+            snapTo(EXPANDED_HEIGHT, 'expanded');
+          }
+        }
+        // Swiping Down (Positive dy)
+        else if (movedDy > 25 || gesture.vy > 0.5) {
+          if (currentH >= EXPANDED_HEIGHT - 60) {
+            snapTo(HALF_HEIGHT, 'half');
+          } else {
+            snapTo(COLLAPSED_HEIGHT, 'collapsed');
+          }
+        }
+        // Threshold snap
+        else {
+          const currentVal = (sheetHeightAnim as unknown as { _value?: number })._value || currentH;
+          if (currentVal < (COLLAPSED_HEIGHT + HALF_HEIGHT) / 2) {
+            snapTo(COLLAPSED_HEIGHT, 'collapsed');
+          } else if (currentVal < (HALF_HEIGHT + EXPANDED_HEIGHT) / 2) {
+            snapTo(HALF_HEIGHT, 'half');
+          } else {
+            snapTo(EXPANDED_HEIGHT, 'expanded');
+          }
+        }
+      },
+    })
+  ).current;
 
   const filterTabs: { key: 'all' | TransitMode; label: string; icon: string }[] = [
     { key: 'all', label: 'All Modes', icon: '📍' },
@@ -112,15 +179,9 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
         longitudeDelta: 0.015,
       });
       // Collapse bottom sheet so user sees the focused map pin
-      setSheetState('collapsed');
+      snapTo(COLLAPSED_HEIGHT, 'collapsed');
     }
     onSelectTransport?.(item);
-  };
-
-  const getSheetHeight = () => {
-    if (sheetState === 'collapsed') return 80;
-    if (sheetState === 'half') return Math.min(340, SCREEN_HEIGHT * 0.45);
-    return Math.min(520, SCREEN_HEIGHT * 0.7);
   };
 
   return (
@@ -136,7 +197,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
           onSelectStop={(stop) => {
             setSelectedStop(stop);
             if (stop) {
-              setSheetState('collapsed');
+              snapTo(COLLAPSED_HEIGHT, 'collapsed');
             }
           }}
           onRegionChange={setMapRegion}
@@ -215,18 +276,16 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
         )}
       </View>
 
-      {/* 3. Floating Bottom Sheet Drawer for Transit Stops */}
-      <View style={[styles.bottomSheet, { height: getSheetHeight() }, shadows.floating]}>
-        {/* Drag Handle Bar */}
-        <TouchableOpacity
-          style={styles.sheetHandleArea}
-          onPress={() => {
-            setSheetState((prev) =>
-              prev === 'collapsed' ? 'half' : prev === 'half' ? 'expanded' : 'collapsed'
-            );
-          }}
-          activeOpacity={0.8}
-        >
+      {/* 3. Floating Bottom Sheet Drawer with Native Swipe Gestures */}
+      <Animated.View
+        style={[
+          styles.bottomSheet,
+          { height: sheetHeightAnim },
+          shadows.floating,
+        ]}
+      >
+        {/* Swipe Handle Drag Area */}
+        <View style={styles.sheetHandleArea} {...panResponder.panHandlers}>
           <View style={styles.dragHandleBar} />
 
           <View style={styles.sheetHeaderRow}>
@@ -235,29 +294,37 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
                 🚏 Nearby Transit ({mappedNearbyList.length})
               </Text>
               <Text style={styles.sheetSubtitle}>
-                {sheetState === 'collapsed'
-                  ? 'Tap or swipe up to view stops'
-                  : 'Tap stop to focus on map'}
+                {currentSheetState === 'collapsed'
+                  ? '↕️ Swipe up to browse transit stops'
+                  : '↕️ Swipe down to see full map'}
               </Text>
             </View>
 
             <TouchableOpacity
               style={styles.sheetToggleBtn}
               onPress={() => {
-                setSheetState((prev) =>
-                  prev === 'collapsed' ? 'half' : prev === 'half' ? 'expanded' : 'collapsed'
-                );
+                if (currentSheetState === 'collapsed') {
+                  snapTo(HALF_HEIGHT, 'half');
+                } else if (currentSheetState === 'half') {
+                  snapTo(EXPANDED_HEIGHT, 'expanded');
+                } else {
+                  snapTo(COLLAPSED_HEIGHT, 'collapsed');
+                }
               }}
             >
               <Text style={styles.sheetToggleText}>
-                {sheetState === 'collapsed' ? '▲ Expand' : sheetState === 'half' ? '▲ Full' : '▼ Mini'}
+                {currentSheetState === 'collapsed'
+                  ? '▲ Swipe Up'
+                  : currentSheetState === 'half'
+                    ? '▲ Full'
+                    : '▼ Collapse'}
               </Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
 
-        {/* Stops List ScrollView when Expanded */}
-        {sheetState !== 'collapsed' && (
+        {/* Stops List ScrollView when Swiped Open */}
+        {currentSheetState !== 'collapsed' && (
           <ScrollView
             style={styles.stopsScroll}
             contentContainerStyle={styles.stopsScrollContent}
@@ -279,7 +346,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
             ))}
           </ScrollView>
         )}
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 };
@@ -433,18 +500,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: colors.border,
     zIndex: 40,
+    overflow: 'hidden',
   },
   sheetHandleArea: {
     alignItems: 'center',
     paddingTop: 8,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
+    backgroundColor: colors.surface,
   },
   dragHandleBar: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
     marginBottom: spacing.xs,
   },
   sheetHeaderRow: {
