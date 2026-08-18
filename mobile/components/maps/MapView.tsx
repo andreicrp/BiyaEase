@@ -197,14 +197,18 @@ export const MapView: React.FC<MapViewProps> = ({
       }
     }
     return tiles;
-  }, [viewportTopLeftX, viewportTopLeftY, dimensions.width, dimensions.height, numTiles, zoomLevel]);
+  }, [
+    viewportTopLeftX,
+    viewportTopLeftY,
+    dimensions.width,
+    dimensions.height,
+    numTiles,
+    zoomLevel,
+  ]);
 
   // Zoom controls
   const handleZoom = (factor: number) => {
-    const nextDelta = Math.max(
-      Math.min(currentRegion.longitudeDelta * factor, 0.25),
-      0.003
-    );
+    const nextDelta = Math.max(Math.min(currentRegion.longitudeDelta * factor, 0.25), 0.003);
     const nextRegion: MapRegion = {
       ...currentRegion,
       latitudeDelta: nextDelta,
@@ -281,11 +285,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <View
-      style={[
-        styles.container,
-        { height: typeof height === 'number' ? height : undefined },
-        style,
-      ]}
+      style={[styles.container, { height: typeof height === 'number' ? height : undefined }, style]}
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
@@ -390,7 +390,8 @@ export const MapView: React.FC<MapViewProps> = ({
       })}
 
       {/* 6. Render User GPS Location Marker */}
-      {showsUserLocation && userLocation && (
+      {showsUserLocation &&
+        userLocation &&
         (() => {
           const uPt = projectToPixels(userLocation);
           return (
@@ -398,8 +399,7 @@ export const MapView: React.FC<MapViewProps> = ({
               <UserLocationMarker size={18} />
             </View>
           );
-        })()
-      )}
+        })()}
 
       {/* 7. Map Controls (Recenter, Zoom In, Zoom Out) */}
       {showControls && (

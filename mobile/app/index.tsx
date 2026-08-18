@@ -19,6 +19,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 
 // Types & Mock Data
 import { Destination, RouteOption, SavedPlace, SavedRoute, RecentTrip } from '../types/index';
+import { SelectedLocation } from '../types/search.types';
 import { mockRouteOptions } from '../data/mockData';
 
 type AppFlowState =
@@ -37,9 +38,9 @@ export default function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<MainTabType>('home');
 
   // Active Flow State Data
-  const [selectedDestination, setSelectedDestination] = useState<Destination | string>(
-    'SM North EDSA'
-  );
+  const [selectedDestination, setSelectedDestination] = useState<
+    Destination | SelectedLocation | string
+  >('SM North EDSA');
   const [selectedRoute, setSelectedRoute] = useState<RouteOption>(mockRouteOptions[0]!);
 
   // Navigation handlers
@@ -63,7 +64,7 @@ export default function App(): React.JSX.Element {
     setFlowState('search');
   };
 
-  const handleSelectDestination = (dest: Destination): void => {
+  const handleSelectDestination = (dest: Destination | SelectedLocation | string): void => {
     setSelectedDestination(dest);
     setFlowState('route_options');
   };

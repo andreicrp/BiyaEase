@@ -9,10 +9,11 @@ import { RouteCard } from '../components/routes/RouteCard';
 import { LoadingState } from '../components/common/LoadingState';
 import { MockTransitService } from '../services/mockTransitService';
 import { RouteOption, RouteFilterCategory, Destination } from '../types/index';
+import { SelectedLocation } from '../types/search.types';
 
 interface RouteOptionsScreenProps {
   origin?: string;
-  destination: Destination | string;
+  destination: Destination | SelectedLocation | string;
   onBack: () => void;
   onSelectRoute: (route: RouteOption) => void;
 }

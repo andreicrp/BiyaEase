@@ -3,6 +3,7 @@ import { RootController } from '../controllers/root.controller.js';
 import healthRoutes from './health.routes.js';
 import transitRoutes from './transit.routes.js';
 import placesRoutes from './places.routes.js';
+import searchRoutes from './search.routes.js';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.get('/', RootController.getRoot);
 router.use('/api/health', healthRoutes);
 router.use('/api/transit', transitRoutes);
 router.use('/api/places', placesRoutes);
+router.use('/api/search', searchRoutes);
 
 export default router;

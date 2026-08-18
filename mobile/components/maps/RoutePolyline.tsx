@@ -51,10 +51,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
 
     return (
       <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
-        <svg
-          style={{ position: 'absolute', width, height }}
-          viewBox={`0 0 ${width} ${height}`}
-        >
+        <svg style={{ position: 'absolute', width, height }} viewBox={`0 0 ${width} ${height}`}>
           <path
             d={pathData}
             fill="none"

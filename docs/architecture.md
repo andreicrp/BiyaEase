@@ -105,8 +105,8 @@ PHASE 3: GTFS Importer & Real Transit Data Foundation (Complete)
 PHASE 4: Map System & Geospatial Visualization (Complete)
 └── Universal MapView provider abstraction, PostGIS GeoJSON polyline rendering, Stop & Place markers, and camera bounds management.
 
-PHASE 5: Location Search
-└── Place autocomplete, geocoding, and landmark search via Google Places API.
+PHASE 5: Location Search & Place Autocomplete (Complete)
+└── Unified multi-entity search across places, stops, stations, and routes with pg_trgm GIN indexing, PostGIS proximity distance ranking, and 300ms debounced mobile autocomplete.
 
 PHASE 6: Routing Engine
 └── Multi-modal pathfinding algorithm (walking + jeepney + bus + train + UV express).

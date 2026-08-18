@@ -31,7 +31,8 @@
     "gtfs:import": "npm run gtfs:import --workspace=server",
     "gtfs:report": "npm run gtfs:report --workspace=server",
     "gtfs:test": "npm run gtfs:test --workspace=server",
-    "map:test": "tsx mobile/utils/geoTestRunner.ts"
+    "map:test": "tsx mobile/utils/geoTestRunner.ts",
+    "search:test": "tsx server/src/test/searchTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",

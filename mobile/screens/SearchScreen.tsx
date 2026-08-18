@@ -1,110 +1,160 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { SearchBar } from '../components/common/SearchBar';
-import { EmptyState } from '../components/common/EmptyState';
-import { transitApiService } from '../services/transitApiService';
-import { MockTransitService } from '../services/mockTransitService';
+import { searchApiService } from '../services/searchApiService';
+import { SearchResult, SelectedLocation, RecentSearchItem } from '../types/search.types';
 import { Destination } from '../types/index';
 
 interface SearchScreenProps {
   onBack: () => void;
-  onSelectDestination: (destination: Destination) => void;
+  onSelectDestination: (destination: Destination | SelectedLocation) => void;
 }
 
 export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDestination }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Destination[]>([]);
-  const [recentSearches, setRecentSearches] = useState<Destination[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load recent searches on mount
   useEffect(() => {
-    MockTransitService.getRecentSearches().then(setRecentSearches);
-    MockTransitService.getPopularDestinations().then(setResults);
+    searchApiService.getRecentSearches().then(setRecentSearches);
   }, []);
 
-  const handleSearchChange = async (text: string): Promise<void> => {
+  const handleQueryChange = (text: string) => {
     setSearchQuery(text);
-    setIsSearching(true);
 
-    try {
-      if (!text.trim()) {
-        const popular = await MockTransitService.getPopularDestinations();
-        setResults(popular);
-        setIsSearching(false);
-        return;
-      }
-
-      // Query real PostGIS places search
-      const apiPlaces = await transitApiService.searchPlaces(text);
-      if (apiPlaces && apiPlaces.length > 0) {
-        setResults(
-          apiPlaces.map((p) => ({
-            id: p.id,
-            name: p.name,
-            area: p.address || 'Metro Manila',
-            category: p.category as Destination['category'],
-            coordinates: {
-              latitude: p.latitude,
-              longitude: p.longitude,
-            },
-          }))
-        );
-      } else {
-        const mockFiltered = await MockTransitService.searchDestinations(text);
-        setResults(mockFiltered);
-      }
-    } catch {
-      const mockFiltered = await MockTransitService.searchDestinations(text);
-      setResults(mockFiltered);
-    } finally {
-      setIsSearching(false);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+
+    const trimmed = text.trim();
+
+    if (trimmed.length === 0) {
+      setIsSearching(false);
+      setResults([]);
+      return;
+    }
+
+    // Debounce search by 300ms
+    setIsSearching(true);
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const data = await searchApiService.searchLocations(trimmed, {
+          lat: 14.6538,
+          lng: 121.0685,
+          limit: 25,
+        });
+        setResults(data);
+      } catch (err) {
+        console.warn('Search error:', err);
+        setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
   };
 
-  const getCategoryIcon = (category: string): string => {
-    switch (category) {
-      case 'mall':
-        return '🛍️';
-      case 'university':
-        return '🎓';
-      case 'station':
-        return '🚆';
-      case 'terminal':
-        return '🚌';
-      case 'business':
-        return '🏢';
-      case 'landmark':
-      default:
-        return '📍';
+  const handleSelectLocation = async (item: SearchResult | RecentSearchItem) => {
+    const selected: SelectedLocation = {
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      subtitle: item.subtitle,
+    };
+
+    await searchApiService.saveRecentSearch(selected);
+    onSelectDestination(selected);
+  };
+
+  const handleSelectCurrentLocation = () => {
+    const currentLoc: SelectedLocation = {
+      id: 'current-location',
+      name: 'Current Location',
+      type: 'place',
+      latitude: 14.6538,
+      longitude: 121.0685,
+      subtitle: 'UP Diliman, Quezon City',
+    };
+    onSelectDestination(currentLoc);
+  };
+
+  const handleClearRecent = async () => {
+    await searchApiService.clearRecentSearches();
+    setRecentSearches([]);
+  };
+
+  // Group results by category
+  const placeResults = results.filter((r) => r.type === 'place');
+  const stopResults = results.filter((r) => r.type === 'stop' || r.type === 'station');
+  const routeResults = results.filter((r) => r.type === 'route');
+
+  const getResultIcon = (item: SearchResult): string => {
+    if (item.type === 'station') {
+      const m = (item.mode || '').toLowerCase();
+      if (m.includes('mrt')) return '🚆';
+      if (m.includes('lrt')) return '🚈';
+      return '🚉';
     }
+    if (item.type === 'stop') {
+      const m = (item.mode || '').toLowerCase();
+      if (m.includes('jeep')) return '🚐';
+      if (m.includes('bus')) return '🚌';
+      if (m.includes('uv')) return '🚐';
+      if (m.includes('trik')) return '🛺';
+      return '🚏';
+    }
+    if (item.type === 'route') return '🗺️';
+
+    const cat = (item.category || '').toLowerCase();
+    if (cat.includes('mall') || cat.includes('shop')) return '🛍️';
+    if (cat.includes('uni') || cat.includes('school')) return '🎓';
+    if (cat.includes('gov')) return '🏛️';
+    if (cat.includes('work') || cat.includes('office') || cat.includes('comm')) return '🏢';
+    return '📍';
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Select Destination" onBack={onBack} />
+      <AppHeader title="Search Destination" onBack={onBack} />
 
+      {/* Top Search Input Box */}
       <View style={styles.searchSection}>
         {/* Origin Pill (Fixed to Current Location) */}
-        <View style={styles.originRow}>
-          <Text style={styles.originIcon}>🟢</Text>
-          <Text style={styles.originLabel}>From:</Text>
+        <TouchableOpacity
+          style={styles.originRow}
+          onPress={handleSelectCurrentLocation}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.originIcon}>📍</Text>
+          <Text style={styles.originLabel}>Current Origin:</Text>
           <Text style={styles.originValue} numberOfLines={1}>
-            UP Diliman (Current Location)
+            UP Diliman (Quezon City)
           </Text>
-        </View>
+        </TouchableOpacity>
 
-        {/* Destination Search Input */}
+        {/* Live Search Input with Clear Button */}
         <SearchBar
           value={searchQuery}
-          onChangeText={handleSearchChange}
-          placeholder="Where to? (e.g. SM North, Cubao, MRT)"
+          onChangeText={handleQueryChange}
+          placeholder="Where to? (e.g. SM North, UP, MRT-3, Philcoa)"
           autoFocus={true}
-          onClear={() => handleSearchChange('')}
+          onClear={() => handleQueryChange('')}
         />
       </View>
 
@@ -114,26 +164,41 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* If query is empty, show Recent Searches */}
+        {/* Loading Indicator */}
+        {isSearching && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>Searching locations & transit stops...</Text>
+          </View>
+        )}
+
+        {/* 1. Recent Searches (Shown when query is empty) */}
         {!searchQuery.trim() && recentSearches.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
+              <TouchableOpacity
+                onPress={handleClearRecent}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.clearText}>Clear all</Text>
+              </TouchableOpacity>
+            </View>
+
             {recentSearches.map((item) => (
               <TouchableOpacity
                 key={`recent-${item.id}`}
                 style={[styles.resultItem, shadows.subtle]}
-                onPress={() => onSelectDestination(item)}
+                onPress={() => handleSelectLocation(item)}
                 activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Select recent ${item.name}`}
               >
                 <View style={styles.iconCircle}>
                   <Text style={styles.iconText}>⏱</Text>
                 </View>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemArea}>
-                    {item.area} · {item.subtitle || item.category}
+                  <Text style={styles.itemSubtitle} numberOfLines={1}>
+                    {item.subtitle || 'Recent location'}
                   </Text>
                 </View>
                 <Text style={styles.selectArrow}>→</Text>
@@ -142,44 +207,124 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
           </View>
         )}
 
-        {/* Results List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {searchQuery.trim() ? `SEARCH RESULTS (${results.length})` : 'POPULAR DESTINATIONS'}
-          </Text>
-
-          {results.length === 0 && !isSearching ? (
-            <EmptyState
-              title="No locations found"
-              description={`No destinations matching "${searchQuery}". Try searching for "SM North", "Cubao", or "UP Diliman".`}
-              showMascot={true}
-            />
-          ) : (
-            results.map((item) => (
+        {/* 2. Categorized Places & Landmarks */}
+        {placeResults.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>PLACES & LANDMARKS ({placeResults.length})</Text>
+            {placeResults.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={[styles.resultItem, shadows.subtle]}
-                onPress={() => onSelectDestination(item)}
+                onPress={() => handleSelectLocation(item)}
                 activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Select destination ${item.name}`}
               >
                 <View style={styles.iconCircle}>
-                  <Text style={styles.iconText}>{getCategoryIcon(item.category)}</Text>
+                  <Text style={styles.iconText}>{getResultIcon(item)}</Text>
                 </View>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemArea}>
-                    {item.area} {item.subtitle ? `· ${item.subtitle}` : ''}
+                  <Text style={styles.itemSubtitle} numberOfLines={1}>
+                    {item.subtitle}
                   </Text>
                 </View>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{item.category.toUpperCase()}</Text>
+                {item.distanceMeters !== undefined && (
+                  <View style={styles.distancePill}>
+                    <Text style={styles.distancePillText}>
+                      {item.distanceMeters >= 1000
+                        ? `${(item.distanceMeters / 1000).toFixed(1)} km`
+                        : `${Math.round(item.distanceMeters)} m`}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* 3. Categorized Transit Stops & Stations */}
+        {stopResults.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>TRANSIT STOPS & STATIONS ({stopResults.length})</Text>
+            {stopResults.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.resultItem, shadows.subtle]}
+                onPress={() => handleSelectLocation(item)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconCircle}>
+                  <Text style={styles.iconText}>{getResultIcon(item)}</Text>
+                </View>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemSubtitle} numberOfLines={1}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+                {item.distanceMeters !== undefined && (
+                  <View style={styles.distancePill}>
+                    <Text style={styles.distancePillText}>
+                      {item.distanceMeters >= 1000
+                        ? `${(item.distanceMeters / 1000).toFixed(1)} km`
+                        : `${Math.round(item.distanceMeters)} m`}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* 4. Categorized Transit Routes */}
+        {routeResults.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              TRANSIT ROUTES & CORRIDORS ({routeResults.length})
+            </Text>
+            {routeResults.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.resultItem, shadows.subtle]}
+                onPress={() => handleSelectLocation(item)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconCircle}>
+                  <Text style={styles.iconText}>{getResultIcon(item)}</Text>
+                </View>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemSubtitle} numberOfLines={1}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+                <View style={styles.routeBadge}>
+                  <Text style={styles.routeBadgeText}>ROUTE</Text>
                 </View>
               </TouchableOpacity>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        )}
+
+        {/* 5. Useful Empty State with Search Tips */}
+        {searchQuery.trim().length >= 2 && results.length === 0 && !isSearching && (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>No locations found for "{searchQuery}"</Text>
+            <Text style={styles.emptyDesc}>Try searching with these suggestions:</Text>
+            <View style={styles.tipsList}>
+              <Text style={styles.tipItem}>• Check for correct spelling</Text>
+              <Text style={styles.tipItem}>
+                • Search for popular landmarks: "SM North", "UP", "Trinoma"
+              </Text>
+              <Text style={styles.tipItem}>
+                • Search for stations: "MRT", "LRT", "Cubao", "Katipunan"
+              </Text>
+              <Text style={styles.tipItem}>
+                • Search for transit corridors: "Philcoa", "EDSA", "Fairview"
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -231,8 +376,26 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  loadingText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
+  },
   section: {
     marginBottom: spacing.lg,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: typography.fontSize.xxs,
@@ -240,6 +403,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.5,
     marginBottom: spacing.sm,
+  },
+  clearText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+    fontWeight: '700',
   },
   resultItem: {
     flexDirection: 'row',
@@ -252,16 +420,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.cardAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
   iconText: {
-    fontSize: 18,
+    fontSize: 16,
   },
   itemInfo: {
     flex: 1,
@@ -271,27 +439,77 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  itemArea: {
+  itemSubtitle: {
     fontSize: typography.fontSize.xs,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  categoryBadge: {
+  distancePill: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: spacing.xs,
   },
-  categoryBadgeText: {
+  distancePillText: {
     fontSize: 9,
     fontWeight: '800',
     color: colors.primaryDark,
+  },
+  routeBadge: {
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: spacing.xs,
+  },
+  routeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   selectArrow: {
     fontSize: 16,
     color: colors.primary,
     fontWeight: '700',
     marginLeft: spacing.sm,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIcon: {
+    fontSize: 32,
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyDesc: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 4,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  tipsList: {
+    width: '100%',
+    backgroundColor: colors.cardAlt,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    gap: 4,
+  },
+  tipItem: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
