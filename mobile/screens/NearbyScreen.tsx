@@ -32,6 +32,12 @@ const EXPANDED_HEIGHT = Math.min(560, SCREEN_HEIGHT * 0.72);
 
 const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 };
 
+const RNView = View as any;
+const RNText = Text as any;
+const RNScrollView = ScrollView as any;
+const RNActivityIndicator = ActivityIndicator as any;
+const RNAnimatedView = Animated.View as any;
+
 export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, onOpenSearch }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | TransitMode>('all');
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
@@ -189,7 +195,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* 1. Full-Screen Immersive Long Map (flex: 1) */}
-      <View style={styles.mapWrapper}>
+      <RNView style={styles.mapWrapper}>
         <MapView
           height="100%"
           region={mapRegion}
@@ -206,10 +212,10 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
           showControls={true}
           style={styles.fullMap}
         />
-      </View>
+      </RNView>
 
       {/* 2. Floating Top Origin/Destination Header & Mode Filters (Overlaid on Map) */}
-      <View style={styles.topFloatingSection}>
+      <RNView style={styles.topFloatingSection}>
         {/* Origin / Destination Search Card */}
         <TouchableOpacity
           style={[styles.searchPillCard, shadows.floating]}
@@ -217,35 +223,35 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
           activeOpacity={0.9}
         >
           {/* Connector Dots */}
-          <View style={styles.routeConnectorCol}>
-            <View style={styles.originDot} />
-            <View style={styles.connectorLine} />
-            <View style={styles.destDot} />
-          </View>
+          <RNView style={styles.routeConnectorCol}>
+            <RNView style={styles.originDot} />
+            <RNView style={styles.connectorLine} />
+            <RNView style={styles.destDot} />
+          </RNView>
 
           {/* Input Labels */}
-          <View style={styles.searchInputsCol}>
-            <View style={styles.searchRowItem}>
-              <Text style={styles.originText} numberOfLines={1}>
+          <RNView style={styles.searchInputsCol}>
+            <RNView style={styles.searchRowItem}>
+              <RNText style={styles.originText} numberOfLines={1}>
                 Current Location (UP Diliman)
-              </Text>
-            </View>
-            <View style={styles.searchDivider} />
-            <View style={styles.searchRowItem}>
-              <Text style={styles.destPlaceholder} numberOfLines={1}>
+              </RNText>
+            </RNView>
+            <RNView style={styles.searchDivider} />
+            <RNView style={styles.searchRowItem}>
+              <RNText style={styles.destPlaceholder} numberOfLines={1}>
                 Where to? (e.g. SM North, MRT, Philcoa)
-              </Text>
-            </View>
-          </View>
+              </RNText>
+            </RNView>
+          </RNView>
 
-          <View style={styles.swapIconBox}>
-            <Text style={styles.swapIconText}>⇅</Text>
-          </View>
+          <RNView style={styles.swapIconBox}>
+            <RNText style={styles.swapIconText}>⇅</RNText>
+          </RNView>
         </TouchableOpacity>
 
         {/* Mode Filter Horizontal Bar */}
-        <View style={styles.filterBarWrapper}>
-          <ScrollView
+        <RNView style={styles.filterBarWrapper}>
+          <RNScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterScroll}
@@ -259,40 +265,40 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
                   onPress={() => setSelectedFilter(tab.key)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.pillIcon}>{tab.icon}</Text>
-                  <Text style={[styles.pillLabel, isSelected && styles.activePillLabel]}>
+                  <RNText style={styles.pillIcon}>{tab.icon}</RNText>
+                  <RNText style={[styles.pillLabel, isSelected && styles.activePillLabel]}>
                     {tab.label}
-                  </Text>
+                  </RNText>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
-        </View>
+          </RNScrollView>
+        </RNView>
 
         {/* Live Loading Badge */}
         {isLoading && (
-          <View style={[styles.loaderBadge, shadows.subtle]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loaderText}>Loading Metro Manila transit network...</Text>
-          </View>
+          <RNView style={[styles.loaderBadge, shadows.subtle]}>
+            <RNActivityIndicator size="small" color={colors.primary} />
+            <RNText style={styles.loaderText}>Loading Metro Manila transit network...</RNText>
+          </RNView>
         )}
-      </View>
+      </RNView>
 
       {/* 3. Floating Bottom Sheet Drawer with Native Swipe Gestures */}
-      <Animated.View style={[styles.bottomSheet, { height: sheetHeightAnim }, shadows.floating]}>
+      <RNAnimatedView style={[styles.bottomSheet, { height: sheetHeightAnim }, shadows.floating]}>
         {/* Swipe Handle Drag Area */}
-        <View style={styles.sheetHandleArea} {...panResponder.panHandlers}>
-          <View style={styles.dragHandleBar} />
+        <RNView style={styles.sheetHandleArea} {...panResponder.panHandlers}>
+          <RNView style={styles.dragHandleBar} />
 
-          <View style={styles.sheetHeaderRow}>
-            <View style={styles.sheetTitleGroup}>
-              <Text style={styles.sheetTitle}>🚏 Nearby Transit ({mappedNearbyList.length})</Text>
-              <Text style={styles.sheetSubtitle}>
+          <RNView style={styles.sheetHeaderRow}>
+            <RNView style={styles.sheetTitleGroup}>
+              <RNText style={styles.sheetTitle}>🚏 Nearby Transit ({mappedNearbyList.length})</RNText>
+              <RNText style={styles.sheetSubtitle}>
                 {currentSheetState === 'collapsed'
                   ? '↕️ Swipe up to browse transit stops'
                   : '↕️ Swipe down to see full map'}
-              </Text>
-            </View>
+              </RNText>
+            </RNView>
 
             <TouchableOpacity
               style={styles.sheetToggleBtn}
@@ -306,37 +312,37 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
                 }
               }}
             >
-              <Text style={styles.sheetToggleText}>
+              <RNText style={styles.sheetToggleText}>
                 {currentSheetState === 'collapsed'
                   ? '▲ Swipe Up'
                   : currentSheetState === 'half'
                     ? '▲ Full'
                     : '▼ Collapse'}
-              </Text>
+              </RNText>
             </TouchableOpacity>
-          </View>
-        </View>
+          </RNView>
+        </RNView>
 
         {/* Stops List ScrollView when Swiped Open */}
         {currentSheetState !== 'collapsed' && (
-          <ScrollView
+          <RNScrollView
             style={styles.stopsScroll}
             contentContainerStyle={styles.stopsScrollContent}
             showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}
           >
             {mappedNearbyList.length === 0 && !isLoading && (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No stops found for this filter radius.</Text>
-              </View>
+              <RNView style={styles.emptyCard}>
+                <RNText style={styles.emptyText}>No stops found for this filter radius.</RNText>
+              </RNView>
             )}
 
             {mappedNearbyList.map((item) => (
               <TransportCard key={item.id} item={item} onPress={() => handleSelectFromList(item)} />
             ))}
-          </ScrollView>
+          </RNScrollView>
         )}
-      </Animated.View>
+      </RNAnimatedView>
     </SafeAreaView>
   );
 };

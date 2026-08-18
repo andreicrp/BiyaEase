@@ -5,6 +5,7 @@ declare global {
   namespace JSX {
     interface ElementClass {
       props?: any;
+      state?: any;
       context?: any;
       setState?: any;
       forceUpdate?: any;
@@ -15,6 +16,7 @@ declare global {
     namespace JSX {
       interface ElementClass {
         props?: any;
+        state?: any;
         context?: any;
         setState?: any;
         forceUpdate?: any;
@@ -27,6 +29,7 @@ declare global {
 declare module 'react-native' {
   interface ViewComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
@@ -34,6 +37,7 @@ declare module 'react-native' {
   }
   interface TextComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
@@ -41,6 +45,7 @@ declare module 'react-native' {
   }
   interface ImageComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
@@ -48,6 +53,7 @@ declare module 'react-native' {
   }
   interface ScrollViewComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
@@ -55,6 +61,7 @@ declare module 'react-native' {
   }
   interface ActivityIndicatorComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
@@ -62,6 +69,7 @@ declare module 'react-native' {
   }
   interface TouchableOpacityComponent {
     props: any;
+    state: any;
     context: any;
     setState: any;
     forceUpdate: any;
