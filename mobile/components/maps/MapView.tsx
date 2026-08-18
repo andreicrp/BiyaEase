@@ -79,6 +79,15 @@ function getTouchDistance(evt: GestureResponderEvent): number | null {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function getTouchMidpoint(evt: GestureResponderEvent): { x: number; y: number } | null {
+  const touches = evt.nativeEvent.touches;
+  if (!touches || touches.length < 2) return null;
+  return {
+    x: (touches[0]!.pageX + touches[1]!.pageX) / 2,
+    y: (touches[0]!.pageY + touches[1]!.pageY) / 2,
+  };
+}
+
 export const MapView: React.FC<MapViewProps> = ({
   initialRegion = DEFAULT_METRO_MANILA_REGION,
   region: controlledRegion,
@@ -103,6 +112,9 @@ export const MapView: React.FC<MapViewProps> = ({
   });
 
   const [currentRegion, setCurrentRegion] = useState<MapRegion>(controlledRegion || initialRegion);
+  const regionRef = useRef<MapRegion>(currentRegion);
+  regionRef.current = currentRegion;
+
   const [activeStop, setActiveStop] = useState<ApiTransitStop | null>(null);
   const [activePlace, setActivePlace] = useState<ApiPlace | null>(null);
 
@@ -243,75 +255,98 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  // Two-Finger Pinch to Zoom & One-Finger Pan State
+  // High-performance smooth gesture state
   const gestureStateRef = useRef<{
+    lastTouchTime: number;
+    lastDistance: number | null;
+    lastMidpoint: { x: number; y: number } | null;
     startLat: number;
     startLng: number;
-    startDelta: number;
-    initialDistance: number | null;
   }>({
+    lastTouchTime: 0,
+    lastDistance: null,
+    lastMidpoint: null,
     startLat: currentRegion.latitude,
     startLng: currentRegion.longitude,
-    startDelta: currentRegion.longitudeDelta,
-    initialDistance: null,
   });
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
-        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2 || gesture.numberActiveTouches >= 2,
+        Math.abs(gesture.dx) > 1.5 || Math.abs(gesture.dy) > 1.5 || gesture.numberActiveTouches >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent) => {
         const dist = getTouchDistance(evt);
+        const mid = getTouchMidpoint(evt);
         gestureStateRef.current = {
-          startLat: currentRegion.latitude,
-          startLng: currentRegion.longitude,
-          startDelta: currentRegion.longitudeDelta,
-          initialDistance: dist,
+          lastTouchTime: Date.now(),
+          lastDistance: dist,
+          lastMidpoint: mid,
+          startLat: regionRef.current.latitude,
+          startLng: regionRef.current.longitude,
         };
       },
 
       onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
         const touches = evt.nativeEvent.touches;
+        const reg = regionRef.current;
 
-        // 1. Two-Finger Pinch to Zoom (Expands / Decreases Map Zoom)
+        // 1. Smooth Progressive Two-Finger Pinch Zoom
         if (touches && touches.length >= 2) {
           const currentDistance = getTouchDistance(evt);
-          if (currentDistance && gestureStateRef.current.initialDistance) {
-            const scale = gestureStateRef.current.initialDistance / currentDistance;
-            const newDelta = Math.max(
-              Math.min(gestureStateRef.current.startDelta * scale, 0.35),
-              0.003
-            );
+          const currentMid = getTouchMidpoint(evt);
+          const lastDist = gestureStateRef.current.lastDistance;
 
-            setCurrentRegion((prev) => ({
-              ...prev,
+          if (currentDistance && lastDist && lastDist > 10) {
+            const rawRatio = lastDist / currentDistance;
+            // Apply subtle dampening curve for silky smooth zoom feel
+            const dampedRatio = 1 + (rawRatio - 1) * 0.75;
+            const newDelta = Math.max(Math.min(reg.longitudeDelta * dampedRatio, 0.35), 0.003);
+
+            let newLat = reg.latitude;
+            let newLng = reg.longitude;
+
+            // Pan with midpoint movement while pinching
+            if (currentMid && gestureStateRef.current.lastMidpoint) {
+              const dMidX = currentMid.x - gestureStateRef.current.lastMidpoint.x;
+              const dMidY = currentMid.y - gestureStateRef.current.lastMidpoint.y;
+              newLng -= (dMidX / dimensions.width) * reg.longitudeDelta;
+              newLat += (dMidY / dimensions.height) * reg.latitudeDelta;
+            }
+
+            gestureStateRef.current.lastDistance = currentDistance;
+            gestureStateRef.current.lastMidpoint = currentMid;
+
+            setCurrentRegion({
+              latitude: newLat,
+              longitude: newLng,
               latitudeDelta: newDelta,
               longitudeDelta: newDelta,
-            }));
+            });
             return;
           }
         }
 
-        // 2. One-Finger Pan (Drag across Metro Manila)
+        // 2. Responsive One-Finger Smooth Pan
         const { width, height: h } = dimensions;
-        const dLng = -(gesture.dx / width) * currentRegion.longitudeDelta;
-        const dLat = (gesture.dy / h) * currentRegion.latitudeDelta;
+        const dLng = -(gesture.dx / width) * reg.longitudeDelta;
+        const dLat = (gesture.dy / h) * reg.latitudeDelta;
 
         const nextLat = gestureStateRef.current.startLat + dLat;
         const nextLng = gestureStateRef.current.startLng + dLng;
 
-        setCurrentRegion((prev) => ({
-          ...prev,
+        setCurrentRegion({
+          ...reg,
           latitude: nextLat,
           longitude: nextLng,
-        }));
+        });
       },
 
       onPanResponderRelease: () => {
-        gestureStateRef.current.initialDistance = null;
-        onRegionChange?.(currentRegion);
+        gestureStateRef.current.lastDistance = null;
+        gestureStateRef.current.lastMidpoint = null;
+        onRegionChange?.(regionRef.current);
       },
     })
   ).current;
