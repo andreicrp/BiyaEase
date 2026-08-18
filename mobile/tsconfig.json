@@ -3,7 +3,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-native",
+    "jsx": "react-jsx",
     "types": ["react", "react-native"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

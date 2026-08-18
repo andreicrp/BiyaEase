@@ -69,7 +69,7 @@ const DEFAULT_METRO_MANILA_REGION: MapRegion = {
 const TILE_SIZE = 256;
 const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
 
-function extractTouchData(evt?: GestureResponderEvent): {
+function extractTouchData(evt?: any): {
   count: number;
   distance: number | null;
   midpoint: { x: number; y: number } | null;
@@ -345,7 +345,7 @@ export const MapView: React.FC<MapViewProps> = ({
         Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3 || (gesture.numberActiveTouches || 0) >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
-        evt?.persist?.();
+        (evt as any)?.persist?.();
         isGestureActiveRef.current = true;
         const touchData = extractTouchData(evt);
         const currentReg = regionRef.current;
@@ -366,7 +366,7 @@ export const MapView: React.FC<MapViewProps> = ({
       },
 
       onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
-        evt?.persist?.();
+        (evt as any)?.persist?.();
         const { count, distance: currentDistance, midpoint: currentMid } = extractTouchData(evt);
         const gState = gestureStateRef.current;
         const { width, height: h } = dimensions;
