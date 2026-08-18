@@ -1,0 +1,20 @@
+{
+  "sourceName": "gtfs-master",
+  "datasetVersion": "2026-08-18",
+  "fileHash": "2b0b80ebad6339b06613939996c81735071f7a7cdeac9bd59bb17c480d56b4be",
+  "status": "IMPORTED",
+  "importedAt": "2026-08-18T08:35:51.247Z",
+  "durationMs": 48704,
+  "recordCounts": {
+    "agencies": 6,
+    "routes": 1717,
+    "stops": 4858,
+    "trips": 1864,
+    "stop_times": 79414,
+    "shapes": 10,
+    "services": 20
+  },
+  "errorCount": 0,
+  "warningCount": 0,
+  "issues": []
+}

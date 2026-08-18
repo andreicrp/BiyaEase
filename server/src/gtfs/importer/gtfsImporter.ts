@@ -1,5 +1,5 @@
-import fs from 'fs';
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import { getDatabasePool } from '../../database/index.js';
 import { FeedValidator } from '../validators/feedValidator.js';
@@ -9,6 +9,7 @@ import { BatchInserter } from './batchInserter.js';
 import { ImportReporter } from '../reporting/importReporter.js';
 import { ImportReport } from '../types/report.types.js';
 import { logger } from '../../utils/logger.js';
+import { NormalizedRouteVariant } from '../types/normalized.types.js';
 
 export interface ImportOptions {
   feedDir: string;
@@ -130,12 +131,19 @@ export class GtfsImporter {
       // Agencies
       const normAgencies = feed.agencies.map((a) => normalizer.normalizeAgency(a));
       const agencyIdMap = new Map<string, string>();
+      const agencyCodes = normAgencies.map((a) => a.code).filter(Boolean);
+      const agencyIds = normAgencies.map((a) => a.id);
+      if (agencyCodes.length > 0) {
+        await client.query(`DELETE FROM agencies WHERE code = ANY($1);`, [agencyCodes]);
+      }
+      if (agencyIds.length > 0) {
+        await client.query(`DELETE FROM agencies WHERE id = ANY($1);`, [agencyIds]);
+      }
       for (const a of normAgencies) {
         agencyIdMap.set(a.external_id, a.id);
         await client.query(
           `INSERT INTO agencies (id, source_id, dataset_id, external_id, name, code, website, phone, email)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, website = EXCLUDED.website;`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
           [
             a.id,
             a.source_id,
@@ -176,7 +184,10 @@ export class GtfsImporter {
         );
       }
 
-      // Routes & Route Variants
+      // Routes & Route Variants (O(1) Map lookup)
+      const normRoutesMap = new Map<string, ReturnType<typeof normalizer.normalizeRoute>>();
+      const routeIdMap = new Map<string, string>();
+
       const normRoutes = feed.routes.map((r) => {
         const agencyExtId =
           r.agency_id?.trim() ||
@@ -184,37 +195,28 @@ export class GtfsImporter {
           feed.agencies[0]?.agency_name?.trim() ||
           '';
         const agencyId = agencyIdMap.get(agencyExtId) || null;
-        return normalizer.normalizeRoute(r, agencyId);
+        const normalized = normalizer.normalizeRoute(r, agencyId);
+        normRoutesMap.set(normalized.id, normalized);
+        routeIdMap.set(normalized.external_id, normalized.id);
+        return normalized;
       });
 
-      const routeIdMap = new Map<string, string>();
-      for (const r of normRoutes) {
-        routeIdMap.set(r.external_id, r.id);
-        await client.query(
-          `INSERT INTO routes (id, source_id, dataset_id, external_id, agency_id, mode_id, code, name, description, route_color, is_active, source)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, 'gtfs')
-           ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, route_color = EXCLUDED.route_color;`,
-          [
-            r.id,
-            r.source_id,
-            r.dataset_id,
-            r.external_id,
-            r.agency_id,
-            r.mode_id,
-            r.code,
-            r.name,
-            r.description,
-            r.route_color,
-          ]
-        );
-      }
+      await BatchInserter.insertBatch(
+        client,
+        'routes',
+        ['id', 'source_id', 'dataset_id', 'external_id', 'agency_id', 'mode_id', 'code', 'name', 'description', 'route_color', 'is_active', 'source'],
+        normRoutes as unknown as Record<string, unknown>[],
+        500
+      );
 
-      // Build Route Variants from Trips
+      // Build Route Variants from Trips using O(1) Map lookups
       const variantMap = new Map<string, string>(); // key: route_id:dir -> variant_id
+      const normVariants: NormalizedRouteVariant[] = [];
+
       for (const t of feed.trips) {
         const routeId = routeIdMap.get(t.route_id.trim());
         if (!routeId) continue;
-        const normRoute = normRoutes.find((r) => r.id === routeId);
+        const normRoute = normRoutesMap.get(routeId);
         if (!normRoute) continue;
 
         const dir = t.direction_id === '1' ? 'inbound' : 'outbound';
@@ -226,49 +228,26 @@ export class GtfsImporter {
             t.trip_headsign
           );
           variantMap.set(vKey, normVariant.id);
-          await client.query(
-            `INSERT INTO route_variants (id, dataset_id, external_id, route_id, name, direction, description, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;`,
-            [
-              normVariant.id,
-              normVariant.dataset_id,
-              normVariant.external_id,
-              normVariant.route_id,
-              normVariant.name,
-              normVariant.direction,
-              normVariant.description,
-            ]
-          );
+          normVariants.push(normVariant);
         }
       }
 
-      // Stops (with PostGIS Point Geography)
+      await BatchInserter.insertBatch(
+        client,
+        'route_variants',
+        ['id', 'dataset_id', 'external_id', 'route_id', 'name', 'direction', 'description', 'is_active'],
+        normVariants as unknown as Record<string, unknown>[],
+        500
+      );
+
+      // Stops (Batched PostGIS Point Geography)
       const normStops = feed.stops.map((s) => normalizer.normalizeStop(s));
       const stopIdMap = new Map<string, string>();
       for (const s of normStops) {
         stopIdMap.set(s.external_id, s.id);
-        await client.query(
-          `INSERT INTO stops (id, source_id, dataset_id, external_id, code, name, description, latitude, longitude, location, is_active, source)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, ST_SetSRID(ST_MakePoint($9, $8), 4326)::geography, true, 'gtfs')
-           ON CONFLICT (id) DO UPDATE SET 
-             name = EXCLUDED.name, 
-             latitude = EXCLUDED.latitude, 
-             longitude = EXCLUDED.longitude, 
-             location = EXCLUDED.location;`,
-          [
-            s.id,
-            s.source_id,
-            s.dataset_id,
-            s.external_id,
-            s.code,
-            s.name,
-            s.description,
-            s.latitude,
-            s.longitude,
-          ]
-        );
       }
+
+      await BatchInserter.insertStopsBatch(client, normStops, 500);
 
       // Shapes (PostGIS LineString)
       const shapePointsMap = new Map<string, { lat: number; lon: number; seq: number }[]>();
@@ -312,7 +291,7 @@ export class GtfsImporter {
         }
       }
 
-      // Trips
+      // Trips (Batched)
       const normTrips: ReturnType<typeof normalizer.normalizeTrip>[] = [];
       const tripIdMap = new Map<string, string>();
       for (const t of feed.trips) {
@@ -323,25 +302,17 @@ export class GtfsImporter {
         const normTrip = normalizer.normalizeTrip(t, varId, serviceId);
         normTrips.push(normTrip);
         tripIdMap.set(normTrip.external_id, normTrip.id);
-
-        await client.query(
-          `INSERT INTO trips (id, dataset_id, external_id, route_variant_id, service_id, code, headsign, direction, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-           ON CONFLICT (id) DO UPDATE SET headsign = EXCLUDED.headsign;`,
-          [
-            normTrip.id,
-            normTrip.dataset_id,
-            normTrip.external_id,
-            normTrip.route_variant_id,
-            normTrip.service_id,
-            normTrip.code,
-            normTrip.headsign,
-            normTrip.direction,
-          ]
-        );
       }
 
-      // Stop Times (Batched)
+      await BatchInserter.insertBatch(
+        client,
+        'trips',
+        ['id', 'dataset_id', 'external_id', 'route_variant_id', 'service_id', 'code', 'headsign', 'direction', 'is_active'],
+        normTrips as unknown as Record<string, unknown>[],
+        500
+      );
+
+      // Stop Times (Batched in 1000-row chunks)
       const normStopTimes = feed.stopTimes
         .map((st) => {
           const tripId = tripIdMap.get(st.trip_id.trim());
@@ -356,7 +327,7 @@ export class GtfsImporter {
         'stop_times',
         ['id', 'trip_id', 'stop_id', 'stop_sequence', 'arrival_time', 'departure_time'],
         normStopTimes as unknown as Record<string, unknown>[],
-        500
+        1000
       );
 
       // 6. Update Dataset status to imported
@@ -385,18 +356,17 @@ export class GtfsImporter {
         issues: validation.issues,
       };
 
-      // Save report
-      const reportsDir = path.resolve(process.cwd(), 'server/data/reports');
-      ImportReporter.saveReportFiles(report, reportsDir);
       ImportReporter.printConsoleSummary(report);
+      const reportsDir = path.resolve(process.cwd(), 'data/reports');
+      ImportReporter.saveReportFiles(report, reportsDir);
 
       return report;
-    } catch (error) {
+    } catch (err: unknown) {
       await client.query('ROLLBACK;');
-      const msg = error instanceof Error ? error.message : 'Unknown error during ingestion';
-      logger.error(`❌ Ingestion failed. Transaction rolled back cleanly: ${msg}`);
+      const errorMsg = err instanceof Error ? err.message : 'Unknown database error';
+      logger.error(`❌ Ingestion failed. Transaction rolled back cleanly: ${errorMsg}`);
 
-      const rollbackReport: ImportReport = {
+      const failureReport: ImportReport = {
         sourceName,
         datasetVersion: version,
         fileHash,
@@ -406,26 +376,33 @@ export class GtfsImporter {
         recordCounts: feed.recordCounts,
         errorCount: 1,
         warningCount: validation.warningCount,
-        issues: [{ file: 'database', message: msg, severity: 'ERROR' }, ...validation.issues],
+        issues: [
+          ...validation.issues,
+          {
+            file: 'database',
+            message: errorMsg,
+            severity: 'ERROR',
+          },
+        ],
       };
 
-      ImportReporter.printConsoleSummary(rollbackReport);
-      return rollbackReport;
+      ImportReporter.printConsoleSummary(failureReport);
+      return failureReport;
     } finally {
       client.release();
     }
   }
 
   private static computeFeedHash(feedDir: string): string {
-    const files = fs
-      .readdirSync(feedDir)
-      .filter((f) => f.endsWith('.txt'))
-      .sort();
+    const files = ['agency.txt', 'routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
     const hash = crypto.createHash('sha256');
+
     for (const file of files) {
-      const content = fs.readFileSync(path.join(feedDir, file));
-      hash.update(file);
-      hash.update(content);
+      const filePath = path.join(feedDir, file);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath);
+        hash.update(content);
+      }
     }
     return hash.digest('hex');
   }

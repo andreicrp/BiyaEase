@@ -74,31 +74,36 @@ function extractTouchData(evt?: GestureResponderEvent): {
   distance: number | null;
   midpoint: { x: number; y: number } | null;
 } {
-  if (!evt) return { count: 0, distance: null, midpoint: null };
-  const nativeEvt = evt.nativeEvent;
-  if (!nativeEvt) return { count: 0, distance: null, midpoint: null };
-  const touches = nativeEvt.touches;
-  if (!touches || !Array.isArray(touches) || touches.length === 0) {
-    return { count: 0, distance: null, midpoint: null };
+  const SAFE = { count: 0, distance: null, midpoint: null };
+  try {
+    if (!evt) return SAFE;
+    const nativeEvt = evt.nativeEvent;
+    if (!nativeEvt) return SAFE;
+    const touches = nativeEvt.touches;
+    if (!touches || !Array.isArray(touches) || touches.length === 0) {
+      return SAFE;
+    }
+    if (touches.length < 2) {
+      return { count: 1, distance: null, midpoint: null };
+    }
+    const t0 = touches[0];
+    const t1 = touches[1];
+    if (!t0 || !t1 || typeof t0.pageX !== 'number' || typeof t1.pageX !== 'number') {
+      return { count: touches.length, distance: null, midpoint: null };
+    }
+    const dx = t0.pageX - t1.pageX;
+    const dy = t0.pageY - t1.pageY;
+    return {
+      count: touches.length,
+      distance: Math.sqrt(dx * dx + dy * dy),
+      midpoint: {
+        x: (t0.pageX + t1.pageX) / 2,
+        y: (t0.pageY + t1.pageY) / 2,
+      },
+    };
+  } catch {
+    return SAFE;
   }
-  if (touches.length < 2) {
-    return { count: 1, distance: null, midpoint: null };
-  }
-  const t0 = touches[0];
-  const t1 = touches[1];
-  if (!t0 || !t1 || typeof t0.pageX !== 'number' || typeof t1.pageX !== 'number') {
-    return { count: touches.length, distance: null, midpoint: null };
-  }
-  const dx = t0.pageX - t1.pageX;
-  const dy = t0.pageY - t1.pageY;
-  return {
-    count: touches.length,
-    distance: Math.sqrt(dx * dx + dy * dy),
-    midpoint: {
-      x: (t0.pageX + t1.pageX) / 2,
-      y: (t0.pageY + t1.pageY) / 2,
-    },
-  };
 }
 
 export const MapView: React.FC<MapViewProps> = ({

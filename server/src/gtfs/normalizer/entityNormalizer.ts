@@ -32,19 +32,20 @@ export class EntityNormalizer {
   public normalizeAgency(raw: RawGtfsAgency): NormalizedAgency {
     const extId = raw.agency_id?.trim() || raw.agency_name.trim();
     const id = `agency-${this.generateHash(`${this.sourceId}:${extId}`)}`;
+    const rawCode =
+      raw.agency_id?.trim() ||
+      raw.agency_name.substring(0, 10).toUpperCase().replace(/\s+/g, '_');
 
     return {
       id,
       source_id: this.sourceId,
       dataset_id: this.datasetId,
-      external_id: extId,
-      name: raw.agency_name.trim(),
-      code:
-        raw.agency_id?.trim() ||
-        raw.agency_name.substring(0, 10).toUpperCase().replace(/\s+/g, '_'),
+      external_id: extId.substring(0, 64),
+      name: raw.agency_name.trim().substring(0, 255),
+      code: rawCode.substring(0, 64),
       description: null,
       website: raw.agency_url?.trim() || null,
-      phone: raw.agency_phone?.trim() || null,
+      phone: raw.agency_phone?.trim()?.substring(0, 64) || null,
       email: raw.agency_email?.trim() || null,
     };
   }
@@ -52,21 +53,22 @@ export class EntityNormalizer {
   public normalizeRoute(raw: RawGtfsRoute, resolvedAgencyId: string | null): NormalizedRoute {
     const extId = raw.route_id.trim();
     const id = `route-${this.generateHash(`${this.sourceId}:${extId}`)}`;
-    const code = raw.route_short_name?.trim() || raw.route_long_name?.trim() || extId;
-    const name = raw.route_long_name?.trim() || raw.route_short_name?.trim() || extId;
+    // Fall back to extId if route_short_name is missing (do NOT fallback to 100+ char route_long_name for code)
+    const code = (raw.route_short_name?.trim() || extId).substring(0, 64);
+    const name = (raw.route_long_name?.trim() || raw.route_short_name?.trim() || extId).substring(0, 255);
     const modeId = this.modeMapper.resolveMode(raw.route_type, `${code} ${name}`);
 
     return {
       id,
       source_id: this.sourceId,
       dataset_id: this.datasetId,
-      external_id: extId,
+      external_id: extId.substring(0, 64),
       agency_id: resolvedAgencyId,
       mode_id: modeId,
       code,
       name,
       description: raw.route_desc?.trim() || null,
-      route_color: raw.route_color ? `#${raw.route_color.replace('#', '')}` : '#0F766E',
+      route_color: raw.route_color ? `#${raw.route_color.replace('#', '')}`.substring(0, 16) : '#0F766E',
       is_active: true,
       source: 'gtfs',
     };
@@ -79,7 +81,7 @@ export class EntityNormalizer {
   ): NormalizedRouteVariant {
     const dir =
       directionId === '1' || directionId?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound';
-    const extId = `${route.external_id}:${dir}`;
+    const extId = `${route.external_id}:${dir}`.substring(0, 64);
     const id = `var-${this.generateHash(`${this.datasetId}:${extId}`)}`;
 
     return {
@@ -87,7 +89,7 @@ export class EntityNormalizer {
       dataset_id: this.datasetId,
       external_id: extId,
       route_id: route.id,
-      name: headsign ? `${route.name} (${headsign})` : `${route.name} (${dir})`,
+      name: (headsign ? `${route.name} (${headsign})` : `${route.name} (${dir})`).substring(0, 255),
       direction: dir,
       description: `Direction: ${dir}`,
       is_active: true,
@@ -102,9 +104,9 @@ export class EntityNormalizer {
       id,
       source_id: this.sourceId,
       dataset_id: this.datasetId,
-      external_id: extId,
-      code: raw.stop_code?.trim() || extId,
-      name: raw.stop_name.trim(),
+      external_id: extId.substring(0, 64),
+      code: (raw.stop_code?.trim() || extId).substring(0, 64),
+      name: raw.stop_name.trim().substring(0, 255),
       description: raw.stop_desc?.trim() || null,
       address: null,
       latitude: parseFloat(raw.stop_lat),
@@ -115,13 +117,13 @@ export class EntityNormalizer {
   }
 
   public normalizeService(raw: RawGtfsCalendar): NormalizedService {
-    const code = raw.service_id.trim();
+    const code = raw.service_id.trim().substring(0, 64);
     const id = `service-${this.generateHash(`${this.sourceId}:${code}`)}`;
 
     return {
       id,
       code,
-      name: `Service Schedule (${code})`,
+      name: `Service Schedule (${code})`.substring(0, 255),
       monday: raw.monday === '1' || raw.monday.toLowerCase() === 'true',
       tuesday: raw.tuesday === '1' || raw.tuesday.toLowerCase() === 'true',
       wednesday: raw.wednesday === '1' || raw.wednesday.toLowerCase() === 'true',
@@ -146,11 +148,11 @@ export class EntityNormalizer {
     return {
       id,
       dataset_id: this.datasetId,
-      external_id: extId,
+      external_id: extId.substring(0, 64),
       route_variant_id: variantId,
       service_id: resolvedServiceId,
-      code: raw.trip_short_name?.trim() || extId,
-      headsign: raw.trip_headsign?.trim() || 'Transit Route',
+      code: (raw.trip_short_name?.trim() || extId).substring(0, 64),
+      headsign: (raw.trip_headsign?.trim() || 'Transit Route').substring(0, 255),
       direction: dir,
       is_active: true,
     };
@@ -178,11 +180,13 @@ export class EntityNormalizer {
     return crypto.createHash('sha256').update(str).digest('hex').substring(0, 16);
   }
 
-  private formatGtfsDate(rawDate: string): string {
-    const clean = rawDate.trim();
-    if (clean.length === 8 && /^\d{8}$/.test(clean)) {
-      return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+  private formatGtfsDate(dateStr: string): string {
+    if (!dateStr || dateStr.length !== 8) {
+      return new Date().toISOString().split('T')[0]!;
     }
-    return clean || '2026-01-01';
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    return `${year}-${month}-${day}`;
   }
 }
