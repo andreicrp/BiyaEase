@@ -1,5 +1,7 @@
 export type JourneyMode = 'walking' | 'jeepney' | 'bus' | 'mrt' | 'lrt' | 'uvexpress' | 'tricycle';
 
+export type RouteRecommendation = 'fastest' | 'cheapest' | 'least_walking' | 'fewest_transfers';
+
 export interface JourneyStop {
   id: string;
   name: string;
@@ -32,7 +34,9 @@ export interface JourneySegment {
 
 export interface Journey {
   id: string;
-  label?: 'FASTEST' | 'CHEAPEST' | 'LESS WALKING' | 'FEWER TRANSFERS';
+  recommendation?: RouteRecommendation;
+  recommendations?: RouteRecommendation[];
+  label?: 'FASTEST' | 'CHEAPEST' | 'LESS WALKING' | 'FEWER TRANSFERS' | 'FEWEST TRANSFERS';
   isRecommended?: boolean;
   durationMinutes: number;
   fare: number;
@@ -40,6 +44,7 @@ export interface Journey {
   walkingDistanceMeters: number;
   transfers: number;
   modes: JourneyMode[];
+  routeCodes?: string[];
   summary: string;
   origin: {
     latitude: number;

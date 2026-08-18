@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,9 @@ import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
-import { Destination, RouteFilterCategory } from '../types/index';
+import { Destination } from '../types/index';
 import { SelectedLocation } from '../types/search.types';
-import { Journey, JourneyMode } from '../types/routing.types';
+import { Journey, JourneyMode, RouteRecommendation } from '../types/routing.types';
 import { routingApiService } from '../services/routingApiService';
 
 interface RouteOptionsScreenProps {
@@ -22,6 +22,26 @@ interface RouteOptionsScreenProps {
   destination: Destination | SelectedLocation | string;
   onBack: () => void;
   onSelectRoute: (journey: Journey) => void;
+}
+
+type SortOption = 'recommended' | 'fastest' | 'cheapest' | 'least_walking' | 'fewest_transfers';
+type ModeFilterOption = 'all' | JourneyMode;
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hrs} hr ${mins} min` : `${hrs} hr`;
+}
+
+function formatFare(fare: number): string {
+  if (fare === 0) return 'Free';
+  return `₱${fare}`;
+}
+
+function formatWalkDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
 }
 
 export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
@@ -43,13 +63,15 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
       ? { latitude: destination.latitude, longitude: destination.longitude }
       : { latitude: 14.6565, longitude: 121.0288 };
 
-  const [filter, setFilter] = useState<RouteFilterCategory>('all');
+  const [modeFilter, setModeFilter] = useState<ModeFilterOption>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [routes, setRoutes] = useState<Journey[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchRoutes = () => {
     setLoading(true);
+    setErrorMsg(null);
 
     routingApiService
       .searchRoutes({
@@ -68,22 +90,19 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
         limit: 8,
       })
       .then((data) => {
-        if (isMounted) {
-          setRoutes(data);
-          setLoading(false);
-        }
+        setRoutes(data);
+        setLoading(false);
       })
       .catch((err) => {
         console.warn('Routing search error:', err);
-        if (isMounted) {
-          setRoutes([]);
-          setLoading(false);
-        }
+        setErrorMsg('Unable to connect to the transit routing engine. Please retry.');
+        setRoutes([]);
+        setLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    fetchRoutes();
   }, [
     destinationCoords.latitude,
     destinationCoords.longitude,
@@ -93,24 +112,62 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     originName,
   ]);
 
-  const filterChips: { key: RouteFilterCategory; label: string; icon: string }[] = [
-    { key: 'all', label: 'All Routes', icon: '🗺️' },
-    { key: 'fastest', label: 'Fastest', icon: '⚡' },
-    { key: 'cheapest', label: 'Cheapest', icon: '💰' },
-    { key: 'less_walking', label: 'Less Walking', icon: '🚶' },
-    { key: 'fewer_transfers', label: 'Fewer Transfers', icon: '🔄' },
+  const modeFilterTabs: { key: ModeFilterOption; label: string; icon: string }[] = [
+    { key: 'all', label: 'All Modes', icon: '🗺️' },
+    { key: 'jeepney', label: 'Jeepney', icon: '🚐' },
+    { key: 'bus', label: 'Bus', icon: '🚌' },
+    { key: 'mrt', label: 'MRT', icon: '🚆' },
+    { key: 'lrt', label: 'LRT', icon: '🚈' },
+    { key: 'uvexpress', label: 'UV', icon: '🚐' },
+    { key: 'walking', label: 'Walking', icon: '🚶' },
   ];
 
-  // Filter routes based on active category
-  const filteredRoutes = routes.filter((r) => {
-    if (filter === 'all') return true;
-    if (filter === 'fastest') return r.label === 'FASTEST' || r.isRecommended;
-    if (filter === 'cheapest') return r.label === 'CHEAPEST' || r.fare <= 15;
-    if (filter === 'less_walking')
-      return r.label === 'LESS WALKING' || r.walkingDistanceMeters <= 500;
-    if (filter === 'fewer_transfers') return r.label === 'FEWER TRANSFERS' || r.transfers === 0;
-    return true;
-  });
+  const sortChips: { key: SortOption; label: string; icon: string }[] = [
+    { key: 'recommended', label: 'Recommended', icon: '⭐' },
+    { key: 'fastest', label: 'Fastest', icon: '⚡' },
+    { key: 'cheapest', label: 'Cheapest', icon: '💰' },
+    { key: 'least_walking', label: 'Least Walking', icon: '🚶' },
+    { key: 'fewest_transfers', label: 'Fewest Transfers', icon: '↔' },
+  ];
+
+  // 1. Client-Side Mode Filtering & Sorting (instant responsiveness)
+  const processedRoutes = useMemo(() => {
+    // Mode filter
+    let filtered = routes;
+    if (modeFilter !== 'all') {
+      filtered = routes.filter((r) => r.modes.includes(modeFilter));
+    }
+
+    // Sort order
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortOption === 'fastest') {
+        if (a.durationMinutes !== b.durationMinutes) return a.durationMinutes - b.durationMinutes;
+        return a.transfers - b.transfers;
+      }
+      if (sortOption === 'cheapest') {
+        if (a.fare !== b.fare) return a.fare - b.fare;
+        return a.durationMinutes - b.durationMinutes;
+      }
+      if (sortOption === 'least_walking') {
+        if (a.walkingDistanceMeters !== b.walkingDistanceMeters)
+          return a.walkingDistanceMeters - b.walkingDistanceMeters;
+        return a.durationMinutes - b.durationMinutes;
+      }
+      if (sortOption === 'fewest_transfers') {
+        if (a.transfers !== b.transfers) return a.transfers - b.transfers;
+        return a.durationMinutes - b.durationMinutes;
+      }
+
+      // Default: Recommended
+      if (a.isRecommended && !b.isRecommended) return -1;
+      if (!a.isRecommended && b.isRecommended) return 1;
+      if (a.durationMinutes !== b.durationMinutes) return a.durationMinutes - b.durationMinutes;
+      return a.fare - b.fare;
+    });
+
+    return sorted;
+  }, [routes, modeFilter, sortOption]);
 
   const getModeEmoji = (mode: JourneyMode): string => {
     switch (mode) {
@@ -131,14 +188,29 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     }
   };
 
+  const getRecommendationBadgeLabel = (rec: RouteRecommendation): string => {
+    switch (rec) {
+      case 'fastest':
+        return 'FASTEST';
+      case 'cheapest':
+        return 'CHEAPEST';
+      case 'least_walking':
+        return 'LESS WALKING';
+      case 'fewest_transfers':
+        return 'FEWEST TRANSFERS';
+      default:
+        return 'BEST ROUTE';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Commute Route Options" onBack={onBack} />
 
-      {/* Origin -> Destination Trip Header Bar */}
+      {/* Origin -> Destination Trip Header Card */}
       <View style={styles.tripSummaryHeader}>
         <View style={styles.endpointRow}>
-          <Text style={styles.endpointDot}>🟢</Text>
+          <Text style={styles.originDot}>🟢</Text>
           <Text style={styles.endpointText} numberOfLines={1}>
             {originName}
           </Text>
@@ -147,31 +219,62 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
           <Text style={styles.connectorArrow}>↓</Text>
         </View>
         <View style={styles.endpointRow}>
-          <Text style={styles.endpointDot}>📍</Text>
+          <Text style={styles.destDot}>📍</Text>
           <Text style={styles.endpointText} numberOfLines={1}>
             {destinationName}
           </Text>
         </View>
       </View>
 
-      {/* Filter Category Chips */}
+      {/* Mode Filter Tabs */}
       <View style={styles.filterBar}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          {filterChips.map((chip) => {
-            const isSelected = filter === chip.key;
+          {modeFilterTabs.map((tab) => {
+            const isSelected = modeFilter === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.filterPill, isSelected && styles.activeFilterPill]}
+                onPress={() => setModeFilter(tab.key)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${tab.label}`}
+              >
+                <Text style={styles.pillIcon}>{tab.icon}</Text>
+                <Text style={[styles.pillLabel, isSelected && styles.activePillLabel]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Sorting Control Bar */}
+      <View style={styles.sortBar}>
+        <Text style={styles.sortCaption}>SORT BY:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortScroll}
+        >
+          {sortChips.map((chip) => {
+            const isSelected = sortOption === chip.key;
             return (
               <TouchableOpacity
                 key={chip.key}
-                style={[styles.filterChip, isSelected && styles.activeFilterChip]}
-                onPress={() => setFilter(chip.key)}
+                style={[styles.sortChip, isSelected && styles.activeSortChip]}
+                onPress={() => setSortOption(chip.key)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Sort by ${chip.label}`}
               >
-                <Text style={styles.chipIcon}>{chip.icon}</Text>
-                <Text style={[styles.chipLabel, isSelected && styles.activeChipLabel]}>
+                <Text style={styles.sortIcon}>{chip.icon}</Text>
+                <Text style={[styles.sortLabel, isSelected && styles.activeSortLabel]}>
                   {chip.label}
                 </Text>
               </TouchableOpacity>
@@ -184,18 +287,32 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingTitle}>Finding the best routes...</Text>
+          <Text style={styles.loadingTitle}>Comparing transit options...</Text>
           <Text style={styles.loadingSubtitle}>
-            Analyzing Philippine jeepneys, buses, trains & walking corridors
+            Evaluating Philippine jeepneys, buses, trains & walking corridors
           </Text>
         </View>
-      ) : filteredRoutes.length === 0 ? (
+      ) : errorMsg ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Routing Service Error</Text>
+          <Text style={styles.emptySubtitle}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchRoutes}>
+            <Text style={styles.retryButtonText}>🔄 Retry Route Search</Text>
+          </TouchableOpacity>
+        </View>
+      ) : processedRoutes.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🔍</Text>
-          <Text style={styles.emptyTitle}>No feasible routes found</Text>
+          <Text style={styles.emptyTitle}>No routes found</Text>
           <Text style={styles.emptySubtitle}>
-            Try selecting a nearby transit station, landmark, or increasing your walking distance.
+            Try selecting a nearby transit station, landmark, or increasing your walking radius.
           </Text>
+          <View style={styles.suggestionBox}>
+            <Text style={styles.suggestionTitle}>Suggestions:</Text>
+            <Text style={styles.suggestionItem}>• Try selecting "All Modes" filter</Text>
+            <Text style={styles.suggestionItem}>• Choose a major terminal or mall</Text>
+          </View>
         </View>
       ) : (
         <ScrollView
@@ -204,78 +321,109 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.resultsCount}>
-            Found {filteredRoutes.length} practical commute options
+            Found {processedRoutes.length} practical commute option
+            {processedRoutes.length > 1 ? 's' : ''}
           </Text>
 
-          {filteredRoutes.map((journey) => (
-            <TouchableOpacity
-              key={journey.id}
-              style={[styles.journeyCard, shadows.subtle]}
-              onPress={() => onSelectRoute(journey)}
-              activeOpacity={0.8}
-            >
-              {/* Badge & Fare Top Row */}
-              <View style={styles.cardHeader}>
-                {journey.label ? (
-                  <View
-                    style={[
-                      styles.labelBadge,
-                      journey.label === 'FASTEST'
-                        ? styles.badgeFastest
-                        : journey.label === 'CHEAPEST'
-                          ? styles.badgeCheapest
-                          : styles.badgeDefault,
-                    ]}
-                  >
-                    <Text style={styles.labelText}>{journey.label}</Text>
-                  </View>
-                ) : (
-                  <View style={styles.summaryPill}>
-                    <Text style={styles.summaryPillText}>{journey.summary}</Text>
-                  </View>
-                )}
+          {processedRoutes.map((journey) => {
+            const recommendations = journey.recommendations || [];
+            const durationText = formatDuration(journey.durationMinutes);
+            const fareText = formatFare(journey.fare);
+            const walkText = formatWalkDistance(journey.walkingDistanceMeters);
+            const transferText =
+              journey.transfers === 0
+                ? 'Direct'
+                : `${journey.transfers} transfer${journey.transfers > 1 ? 's' : ''}`;
+            const modesText = journey.modes.map((m) => m.toUpperCase()).join(', ');
 
-                <View style={styles.fareContainer}>
-                  <Text style={styles.fareText}>₱{journey.fare}</Text>
+            const a11yLabel = `${
+              journey.label ? `${journey.label} route. ` : ''
+            }${durationText}. ${fareText}. ${walkText} walking. ${transferText}. Transit modes: ${modesText}.`;
+
+            return (
+              <TouchableOpacity
+                key={journey.id}
+                style={[styles.journeyCard, shadows.medium]}
+                onPress={() => onSelectRoute(journey)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={a11yLabel}
+              >
+                {/* 1. Recommendation Badges Row */}
+                <View style={styles.cardHeader}>
+                  <View style={styles.badgeRow}>
+                    {recommendations.length > 0 ? (
+                      recommendations.map((rec) => (
+                        <View
+                          key={`rec-${journey.id}-${rec}`}
+                          style={[
+                            styles.labelBadge,
+                            rec === 'fastest'
+                              ? styles.badgeFastest
+                              : rec === 'cheapest'
+                                ? styles.badgeCheapest
+                                : styles.badgeDefault,
+                          ]}
+                        >
+                          <Text style={styles.labelText}>{getRecommendationBadgeLabel(rec)}</Text>
+                        </View>
+                      ))
+                    ) : journey.label ? (
+                      <View style={[styles.labelBadge, styles.badgeDefault]}>
+                        <Text style={styles.labelText}>{journey.label}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Fare Badge */}
+                  <View style={styles.fareContainer}>
+                    <Text style={styles.fareText}>{fareText}</Text>
+                  </View>
                 </View>
-              </View>
 
-              {/* Duration & Route Summary */}
-              <View style={styles.metricsRow}>
-                <Text style={styles.durationText}>{journey.durationMinutes} min</Text>
-                <Text style={styles.dotSeparator}>·</Text>
-                <Text style={styles.metricText}>
-                  {journey.walkingDistanceMeters >= 1000
-                    ? `${(journey.walkingDistanceMeters / 1000).toFixed(1)} km walking`
-                    : `${journey.walkingDistanceMeters}m walking`}
-                </Text>
-                <Text style={styles.dotSeparator}>·</Text>
-                <Text style={styles.metricText}>
-                  {journey.transfers === 0
-                    ? 'Direct'
-                    : `${journey.transfers} transfer${journey.transfers > 1 ? 's' : ''}`}
-                </Text>
-              </View>
+                {/* 2. Duration & Metrics Row */}
+                <View style={styles.metricsRow}>
+                  <Text style={styles.durationText}>{durationText}</Text>
+                  <Text style={styles.dotSeparator}>·</Text>
+                  <Text style={styles.metricText}>🚶 {walkText} walk</Text>
+                  <Text style={styles.dotSeparator}>·</Text>
+                  <Text style={styles.metricText}>↔ {transferText}</Text>
+                </View>
 
-              {/* Mode Sequence Chain */}
-              <View style={styles.modeChainRow}>
-                {journey.segments.map((seg, idx) => (
-                  <React.Fragment key={`seg-${journey.id}-${idx}`}>
-                    {idx > 0 && <Text style={styles.chainArrow}>→</Text>}
-                    <View
-                      style={[
-                        styles.modeIconBox,
-                        seg.type === 'transit' ? styles.transitIconBox : styles.walkIconBox,
-                      ]}
-                    >
-                      <Text style={styles.modeEmoji}>{getModeEmoji(seg.mode)}</Text>
-                      {seg.routeCode && <Text style={styles.routeCodeMini}>{seg.routeCode}</Text>}
-                    </View>
-                  </React.Fragment>
-                ))}
-              </View>
-            </TouchableOpacity>
-          ))}
+                {/* 3. Mode Sequence & Route Code Chain */}
+                <View style={styles.modeChainRow}>
+                  {journey.segments.map((seg, idx) => (
+                    <React.Fragment key={`seg-${journey.id}-${idx}`}>
+                      {idx > 0 && <Text style={styles.chainArrow}>→</Text>}
+                      <View
+                        style={[
+                          styles.modeIconBox,
+                          seg.type === 'transit' ? styles.transitIconBox : styles.walkIconBox,
+                        ]}
+                      >
+                        <Text style={styles.modeEmoji}>{getModeEmoji(seg.mode)}</Text>
+                        {seg.routeCode ? (
+                          <Text style={styles.routeCodeMini}>{seg.routeCode}</Text>
+                        ) : (
+                          <Text style={styles.modeMini}>
+                            {seg.mode === 'walking' ? 'Walk' : ''}
+                          </Text>
+                        )}
+                      </View>
+                    </React.Fragment>
+                  ))}
+                </View>
+
+                {/* 4. Action Hint */}
+                <View style={styles.cardFooter}>
+                  <Text style={styles.summaryText} numberOfLines={1}>
+                    {journey.summary}
+                  </Text>
+                  <Text style={styles.viewRouteLink}>View Route Details ➔</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -298,7 +446,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  endpointDot: {
+  originDot: {
+    fontSize: 10,
+    marginRight: spacing.sm,
+  },
+  destDot: {
     fontSize: 12,
     marginRight: spacing.sm,
   },
@@ -318,7 +470,7 @@ const styles = StyleSheet.create({
   },
   filterBar: {
     backgroundColor: colors.surface,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -326,32 +478,75 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.xs,
   },
-  filterChip: {
+  filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.cardAlt,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  activeFilterChip: {
+  activeFilterPill: {
     backgroundColor: colors.primary,
     borderColor: colors.primaryDark,
   },
-  chipIcon: {
-    fontSize: 12,
+  pillIcon: {
+    fontSize: 11,
     marginRight: 4,
   },
-  chipLabel: {
+  pillLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  activeChipLabel: {
+  activePillLabel: {
     color: colors.textInverse,
     fontWeight: '700',
+  },
+  sortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  sortCaption: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textMuted,
+    marginRight: spacing.sm,
+    letterSpacing: 0.5,
+  },
+  sortScroll: {
+    gap: spacing.xs,
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.cardAlt,
+  },
+  activeSortChip: {
+    backgroundColor: colors.primaryLight,
+  },
+  sortIcon: {
+    fontSize: 10,
+    marginRight: 3,
+  },
+  sortLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  activeSortLabel: {
+    color: colors.primaryDark,
+    fontWeight: '800',
   },
   scroll: {
     flex: 1,
@@ -374,7 +569,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
   },
   cardHeader: {
@@ -383,10 +578,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    flex: 1,
+  },
   labelBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: borderRadius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   badgeFastest: {
     backgroundColor: '#FEF3C7',
@@ -395,24 +597,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
   },
   badgeDefault: {
-    backgroundColor: colors.cardAlt,
+    backgroundColor: colors.primaryLight,
   },
   labelText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: colors.primaryDark,
     letterSpacing: 0.5,
-  },
-  summaryPill: {
-    backgroundColor: colors.cardAlt,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  summaryPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
   },
   fareContainer: {
     backgroundColor: colors.primaryLight,
@@ -428,7 +619,7 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   durationText: {
     fontSize: typography.fontSize.lg,
@@ -450,6 +641,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
+    marginBottom: spacing.sm,
   },
   chainArrow: {
     fontSize: 12,
@@ -476,9 +668,34 @@ const styles = StyleSheet.create({
   },
   routeCodeMini: {
     fontSize: 9,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontWeight: '800',
+    color: colors.primaryDark,
     marginLeft: 4,
+  },
+  modeMini: {
+    fontSize: 9,
+    color: colors.textMuted,
+    marginLeft: 2,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.xs,
+    marginTop: 2,
+  },
+  summaryText: {
+    fontSize: 10,
+    color: colors.textMuted,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  viewRouteLink: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -518,5 +735,35 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
+  },
+  suggestionBox: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    width: '100%',
+  },
+  suggestionTitle: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  suggestionItem: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+  },
+  retryButtonText: {
+    color: colors.textInverse,
+    fontWeight: '700',
+    fontSize: typography.fontSize.xs,
   },
 });

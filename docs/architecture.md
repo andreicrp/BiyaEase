@@ -114,8 +114,8 @@ PHASE 6: Multi-Modal Routing Engine (Complete)
 PHASE 7: Active Journey & GPS Progress System (Complete)
 └── Client-side active journey state machine (JourneyContext), foreground GPS tracking (locationService), proximity detection engine (journeyProgressService), boarding and alighting alerts, and local persistence.
 
-PHASE 8: Route Details
-└── Step-by-step turn/transfer instructions, boarding points, landmark hints, and fare breakdown.
+PHASE 8: Route Options & Advanced Journey Comparison (Complete)
+└── Polish multi-modal route comparison, multi-criteria recommendation ranking (Fastest, Cheapest, Less Walking, Fewest Transfers), client-side mode filters, sorting controls, and accessible tradeoff cards.
 
 PHASE 9: Navigation
 └── Active trip guidance, turn-by-turn alerts, and alight/transfer notifications.

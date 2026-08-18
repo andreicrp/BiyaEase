@@ -34,7 +34,8 @@
     "map:test": "tsx mobile/utils/geoTestRunner.ts",
     "search:test": "tsx server/src/test/searchTestRunner.ts",
     "routing:test": "tsx server/src/test/routingTestRunner.ts",
-    "journey:test": "tsx mobile/utils/journeyTestRunner.ts"
+    "journey:test": "tsx mobile/utils/journeyTestRunner.ts",
+    "route-options:test": "tsx server/src/test/routeOptionsTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",

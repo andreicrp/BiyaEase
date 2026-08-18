@@ -1,48 +1,127 @@
-import { Journey } from './graph.types.js';
+import { Journey, RouteRecommendation } from './graph.types.js';
 
 export function rankAndLabelJourneys(journeys: Journey[], limit: number = 5): Journey[] {
   if (journeys.length === 0) return [];
 
-  // Clone journeys to assign badges
-  const ranked = [...journeys];
+  const maxLimit = Math.min(Math.max(1, limit), 10);
 
-  // Find best in each dimension
+  // Clone journeys and ensure routeCodes & recommendations array are initialized
+  const ranked: Journey[] = journeys.map((j) => {
+    const routeCodes: string[] = [];
+    j.segments.forEach((seg) => {
+      if (seg.type === 'transit' && seg.routeCode && !routeCodes.includes(seg.routeCode)) {
+        routeCodes.push(seg.routeCode);
+      }
+    });
+
+    return {
+      ...j,
+      routeCodes: j.routeCodes || routeCodes,
+      recommendations: [] as RouteRecommendation[],
+    };
+  });
+
+  // 1. Determine Fastest (Primary: duration ASC, Secondary: transfers ASC, Tertiary: walk ASC)
   let fastestIdx = 0;
-  let cheapestIdx = 0;
-  let leastWalkingIdx = 0;
-  let fewestTransfersIdx = 0;
-
   for (let i = 1; i < ranked.length; i++) {
     const cur = ranked[i]!;
-    if (cur.durationMinutes < ranked[fastestIdx]!.durationMinutes) {
+    const best = ranked[fastestIdx]!;
+
+    if (
+      cur.durationMinutes < best.durationMinutes ||
+      (cur.durationMinutes === best.durationMinutes && cur.transfers < best.transfers) ||
+      (cur.durationMinutes === best.durationMinutes &&
+        cur.transfers === best.transfers &&
+        cur.walkingDistanceMeters < best.walkingDistanceMeters)
+    ) {
       fastestIdx = i;
     }
-    if (cur.fare < ranked[cheapestIdx]!.fare) {
+  }
+
+  // 2. Determine Cheapest (Primary: fare ASC, Secondary: duration ASC, Tertiary: transfers ASC)
+  let cheapestIdx = 0;
+  for (let i = 1; i < ranked.length; i++) {
+    const cur = ranked[i]!;
+    const best = ranked[cheapestIdx]!;
+
+    if (
+      cur.fare < best.fare ||
+      (cur.fare === best.fare && cur.durationMinutes < best.durationMinutes) ||
+      (cur.fare === best.fare &&
+        cur.durationMinutes === best.durationMinutes &&
+        cur.transfers < best.transfers)
+    ) {
       cheapestIdx = i;
     }
-    if (cur.walkingDistanceMeters < ranked[leastWalkingIdx]!.walkingDistanceMeters) {
+  }
+
+  // 3. Determine Least Walking (Primary: walk ASC, Secondary: transfers ASC, Tertiary: duration ASC)
+  let leastWalkingIdx = 0;
+  for (let i = 1; i < ranked.length; i++) {
+    const cur = ranked[i]!;
+    const best = ranked[leastWalkingIdx]!;
+
+    if (
+      cur.walkingDistanceMeters < best.walkingDistanceMeters ||
+      (cur.walkingDistanceMeters === best.walkingDistanceMeters &&
+        cur.transfers < best.transfers) ||
+      (cur.walkingDistanceMeters === best.walkingDistanceMeters &&
+        cur.transfers === best.transfers &&
+        cur.durationMinutes < best.durationMinutes)
+    ) {
       leastWalkingIdx = i;
     }
-    if (cur.transfers < ranked[fewestTransfersIdx]!.transfers) {
+  }
+
+  // 4. Determine Fewest Transfers (Primary: transfers ASC, Secondary: duration ASC, Tertiary: walk ASC)
+  let fewestTransfersIdx = 0;
+  for (let i = 1; i < ranked.length; i++) {
+    const cur = ranked[i]!;
+    const best = ranked[fewestTransfersIdx]!;
+
+    if (
+      cur.transfers < best.transfers ||
+      (cur.transfers === best.transfers && cur.durationMinutes < best.durationMinutes) ||
+      (cur.transfers === best.transfers &&
+        cur.durationMinutes === best.durationMinutes &&
+        cur.walkingDistanceMeters < best.walkingDistanceMeters)
+    ) {
       fewestTransfersIdx = i;
     }
   }
 
-  // Label prioritized categories
-  ranked[fastestIdx]!.label = 'FASTEST';
-  ranked[fastestIdx]!.isRecommended = true;
+  // Assign recommendation flags
+  const addRec = (idx: number, rec: RouteRecommendation) => {
+    if (!ranked[idx]!.recommendations) ranked[idx]!.recommendations = [];
+    if (!ranked[idx]!.recommendations!.includes(rec)) {
+      ranked[idx]!.recommendations!.push(rec);
+    }
+  };
 
-  if (!ranked[cheapestIdx]!.label) {
-    ranked[cheapestIdx]!.label = 'CHEAPEST';
-  }
-  if (!ranked[leastWalkingIdx]!.label) {
-    ranked[leastWalkingIdx]!.label = 'LESS WALKING';
-  }
-  if (!ranked[fewestTransfersIdx]!.label) {
-    ranked[fewestTransfersIdx]!.label = 'FEWER TRANSFERS';
-  }
+  addRec(fastestIdx, 'fastest');
+  addRec(cheapestIdx, 'cheapest');
+  addRec(leastWalkingIdx, 'least_walking');
+  addRec(fewestTransfersIdx, 'fewest_transfers');
 
-  // Sort: Recommended / Fastest first, then cheapest, then fewest transfers
+  // Assign primary recommendation & display badge
+  ranked.forEach((j, idx) => {
+    if (idx === fastestIdx) {
+      j.recommendation = 'fastest';
+      j.label = 'FASTEST';
+      j.isRecommended = true;
+    } else if (idx === cheapestIdx) {
+      j.recommendation = 'cheapest';
+      j.label = 'CHEAPEST';
+    } else if (idx === leastWalkingIdx) {
+      j.recommendation = 'least_walking';
+      j.label = 'LESS WALKING';
+    } else if (idx === fewestTransfersIdx) {
+      j.recommendation = 'fewest_transfers';
+      j.label = 'FEWER TRANSFERS';
+    }
+  });
+
+  // Sort: Recommended / Fastest first, then cheapest, then least walking
   ranked.sort((a, b) => {
     if (a.isRecommended) return -1;
     if (b.isRecommended) return 1;
@@ -51,5 +130,5 @@ export function rankAndLabelJourneys(journeys: Journey[], limit: number = 5): Jo
     return a.transfers - b.transfers;
   });
 
-  return ranked.slice(0, Math.max(1, limit));
+  return ranked.slice(0, maxLimit);
 }

@@ -297,6 +297,7 @@ export function buildJourneyFromPath(
     walkingDistanceMeters: Math.round(totalWalkingMeters),
     transfers: transitTransferCount,
     modes,
+    routeCodes: transitNames,
     summary,
     origin: {
       latitude: origin.latitude,
@@ -333,6 +334,7 @@ export function buildWalkingOnlyJourney(
     walkingDistanceMeters: Math.round(distanceMeters),
     transfers: 0,
     modes: ['walking'],
+    routeCodes: [],
     summary: 'Direct Walking Route',
     origin: {
       latitude: origin.latitude,

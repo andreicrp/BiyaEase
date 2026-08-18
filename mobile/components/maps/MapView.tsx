@@ -155,7 +155,9 @@ export const MapView: React.FC<MapViewProps> = ({
   // 3. Fit camera bounds safely by tracking coordinate fingerprint (prevents array identity loop)
   const fitCoordsKey = useMemo(() => {
     if (!fitCoordinates || fitCoordinates.length === 0) return '';
-    return fitCoordinates.map((c) => `${c.latitude.toFixed(4)},${c.longitude.toFixed(4)}`).join('|');
+    return fitCoordinates
+      .map((c) => `${c.latitude.toFixed(4)},${c.longitude.toFixed(4)}`)
+      .join('|');
   }, [fitCoordinates]);
 
   useEffect(() => {
