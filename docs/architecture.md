@@ -117,8 +117,8 @@ PHASE 7: Active Journey & GPS Progress System (Complete)
 PHASE 8: Route Options & Advanced Journey Comparison (Complete)
 └── Polish multi-modal route comparison, multi-criteria recommendation ranking (Fastest, Cheapest, Less Walking, Fewest Transfers), client-side mode filters, sorting controls, and accessible tradeoff cards.
 
-PHASE 9: Navigation
-└── Active trip guidance, turn-by-turn alerts, and alight/transfer notifications.
+PHASE 9: Live Navigation & Real-Time Commute Alerts (Complete)
+└── Full turn-by-turn commute guidance, polyline progress matching, in-transit next-stop countdown, boarding/alighting/transfer/arrival alerts, haptic feedback, chime alerts, 3-strike off-route detection, and dynamic map camera tracking.
 
 PHASE 10: Saved Places
 └── Bookmark frequently visited locations (Home, Work, School, Favorites).

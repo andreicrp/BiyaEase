@@ -35,7 +35,8 @@
     "search:test": "tsx server/src/test/searchTestRunner.ts",
     "routing:test": "tsx server/src/test/routingTestRunner.ts",
     "journey:test": "tsx mobile/utils/journeyTestRunner.ts",
-    "route-options:test": "tsx server/src/test/routeOptionsTestRunner.ts"
+    "route-options:test": "tsx server/src/test/routeOptionsTestRunner.ts",
+    "navigation:test": "tsx mobile/utils/navigationTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",

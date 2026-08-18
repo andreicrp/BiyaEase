@@ -10,12 +10,16 @@ import { Journey } from '../types/routing.types';
 import { journeyAdapter } from '../services/journeyAdapter';
 import { locationService } from '../services/locationService';
 import { journeyProgressService, StepProgressResult } from '../services/journeyProgressService';
+import { navigationEngine } from '../navigation/navigationEngine';
+import { NavigationState } from '../navigation/navigationTypes';
+import { alertService } from '../services/alertService';
 
 export interface JourneyContextType {
   activeJourney: ActiveJourney | null;
   currentStep: JourneyStep | null;
   currentLocation: UserLocation | null;
   progressResult: StepProgressResult | null;
+  navigationState: NavigationState | null;
   gpsError: string | null;
   isTracking: boolean;
   hasRestoredJourney: boolean;
@@ -69,6 +73,7 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeJourney, setActiveJourney] = useState<ActiveJourney | null>(null);
   const [currentLocation, setCurrentLocation] = useState<UserLocation | null>(null);
   const [progressResult, setProgressResult] = useState<StepProgressResult | null>(null);
+  const [navigationState, setNavigationState] = useState<NavigationState | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState<boolean>(false);
   const [hasRestoredJourney, setHasRestoredJourney] = useState<boolean>(false);
@@ -157,7 +162,7 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (!currJourney || !currStep) return;
 
-    // Evaluate progress
+    // Evaluate progress with Phase 7 service
     const result = journeyProgressService.evaluateStepProgress(
       loc,
       currStep,
@@ -169,6 +174,22 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (initialStepDistanceRef.current === undefined && result.distanceMeters > 0) {
       initialStepDistanceRef.current = result.distanceMeters;
     }
+
+    // Evaluate live navigation state with Phase 9 NavigationEngine
+    const nextStep =
+      currJourney.currentStepIndex < currJourney.steps.length - 1
+        ? currJourney.steps[currJourney.currentStepIndex + 1]
+        : undefined;
+
+    const navState = navigationEngine.update({
+      userLocation: loc,
+      currentStep: currStep,
+      nextStep,
+      allSteps: currJourney.steps,
+      stepIndex: currJourney.currentStepIndex,
+      polylineCoordinates: currJourney.polylineCoordinates,
+    });
+    setNavigationState(navState);
   }, []);
 
   // 4. Start watching GPS only when journey starts or changes status
@@ -211,6 +232,9 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     initialStepDistanceRef.current = undefined;
+    navigationEngine.reset();
+    alertService.reset();
+    setNavigationState(null);
     setActiveJourney(journeyModel);
   }, []);
 
@@ -284,19 +308,25 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // 9. Cancel journey
   const cancelJourney = useCallback(() => {
     locationService.stopWatching();
+    navigationEngine.reset();
+    alertService.reset();
     setActiveJourney((prev) => (prev ? { ...prev, status: 'cancelled' } : null));
     storage.removeItem(STORAGE_KEY);
     setTimeout(() => {
       setActiveJourney(null);
       setProgressResult(null);
+      setNavigationState(null);
     }, 100);
   }, []);
 
   // 10. Discard persisted journey
   const discardActiveJourney = useCallback(() => {
     locationService.stopWatching();
+    navigationEngine.reset();
+    alertService.reset();
     setActiveJourney(null);
     setProgressResult(null);
+    setNavigationState(null);
     storage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -307,6 +337,7 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentStep,
         currentLocation,
         progressResult,
+        navigationState,
         gpsError,
         isTracking,
         hasRestoredJourney,

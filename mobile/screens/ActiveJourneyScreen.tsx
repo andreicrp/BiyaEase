@@ -1,15 +1,19 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useJourney } from '../context/JourneyContext';
 import { MapView } from '../components/maps/MapView';
 import { JourneyProgress } from '../components/journey/JourneyProgress';
-import { JourneyInstructionCard } from '../components/journey/JourneyInstructionCard';
+import { NavigationGuidanceCard } from '../components/navigation/NavigationGuidanceCard';
+import { NextStopCard } from '../components/navigation/NextStopCard';
+import { AlertBanner } from '../components/navigation/AlertBanner';
+import { OffRouteCard } from '../components/navigation/OffRouteCard';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { ApiTransitStop, ApiPlace } from '../services/transitApiService';
 import { JourneyStep } from '../types/journey.types';
+import { MapRegion } from '../utils/geoUtils';
 
 interface ActiveJourneyScreenProps {
   onExit: () => void;
@@ -20,7 +24,7 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
     activeJourney,
     currentStep,
     currentLocation,
-    progressResult,
+    navigationState,
     gpsError,
     advanceStep,
     completeJourney,
@@ -28,6 +32,32 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
   } = useJourney();
 
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [isAutoFollow, setIsAutoFollow] = useState<boolean>(true);
+
+  // Default region based on current position or origin
+  const [mapRegion, setMapRegion] = useState<MapRegion>({
+    latitude: 14.6538,
+    longitude: 121.0685,
+    latitudeDelta: 0.025,
+    longitudeDelta: 0.025,
+  });
+
+  // Camera auto-follow effect
+  useEffect(() => {
+    if (isAutoFollow && currentLocation) {
+      setMapRegion((prev) => ({
+        ...prev,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      }));
+    } else if (isAutoFollow && activeJourney?.origin) {
+      setMapRegion((prev) => ({
+        ...prev,
+        latitude: activeJourney.origin.latitude,
+        longitude: activeJourney.origin.longitude,
+      }));
+    }
+  }, [isAutoFollow, currentLocation?.latitude, currentLocation?.longitude, activeJourney?.origin]);
 
   if (!activeJourney) {
     return (
@@ -79,25 +109,6 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
     [activeJourney.destination.latitude, activeJourney.destination.longitude, activeJourney.destination.name]
   );
 
-  const mapRegion = useMemo(
-    () => ({
-      latitude:
-        currentStep?.latitude || currentLocation?.latitude || activeJourney.origin.latitude,
-      longitude:
-        currentStep?.longitude || currentLocation?.longitude || activeJourney.origin.longitude,
-      latitudeDelta: 0.03,
-      longitudeDelta: 0.03,
-    }),
-    [
-      currentStep?.latitude,
-      currentStep?.longitude,
-      currentLocation?.latitude,
-      currentLocation?.longitude,
-      activeJourney.origin.latitude,
-      activeJourney.origin.longitude,
-    ]
-  );
-
   const handleStepAction = () => {
     if (
       activeJourney.status === 'walking_to_destination' ||
@@ -115,6 +126,18 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
     onExit();
   };
 
+  const handleRecenter = () => {
+    setIsAutoFollow(true);
+    if (currentLocation) {
+      setMapRegion({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* 1. Top Status Header */}
@@ -123,19 +146,25 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
           <View style={styles.statusPill}>
             <View style={[styles.statusDot, isCompleted && styles.statusDotComplete]} />
             <Text style={styles.statusText}>
-              {activeJourney.status === 'walking_to_stop'
-                ? 'WALKING TO STOP'
-                : activeJourney.status === 'boarding'
-                  ? 'BOARDING TRANSIT'
-                  : activeJourney.status === 'in_transit'
+              {navigationState?.status === 'approaching_board'
+                ? 'APPROACHING BOARDING'
+                : navigationState?.status === 'boarding'
+                  ? 'BOARDING STOP'
+                  : navigationState?.status === 'in_transit'
                     ? 'IN TRANSIT'
-                    : activeJourney.status === 'alighting'
+                    : navigationState?.status === 'approaching_alight'
                       ? 'PREPARE TO GET OFF'
-                      : activeJourney.status === 'walking_to_destination'
-                        ? 'FINAL WALK'
-                        : isCompleted
-                          ? 'JOURNEY COMPLETE'
-                          : 'ACTIVE COMMUTE'}
+                      : navigationState?.status === 'alighting'
+                        ? 'AT ALIGHT STOP'
+                        : navigationState?.status === 'transfer'
+                          ? 'TRANSFER POINT'
+                          : navigationState?.status === 'walking_to_destination'
+                            ? 'FINAL WALK'
+                            : navigationState?.status === 'off_route'
+                              ? 'OFF ROUTE'
+                              : isCompleted
+                                ? 'JOURNEY COMPLETE'
+                                : 'LIVE NAVIGATION'}
             </Text>
           </View>
           <Text style={styles.destHeader} numberOfLines={1}>
@@ -191,13 +220,54 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
                 ]
               : []
           }
-          showControls={true}
+          onRegionChange={(reg) => {
+            setMapRegion(reg);
+            setIsAutoFollow(false);
+          }}
+          showControls={false}
           style={styles.map}
         />
+
+        {/* Floating Recenter Button (shows when user manually moves map) */}
+        {!isAutoFollow && (
+          <TouchableOpacity
+            style={[styles.recenterButton, shadows.floating]}
+            onPress={handleRecenter}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.recenterText}>🎯 Recenter</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* 4. Bottom Active Instruction Card or Completion Card */}
+      {/* 4. Overlay Notifications & Guidance Bottom Sheet */}
       <View style={styles.bottomArea}>
+        {/* Active Alert Banner */}
+        {navigationState?.activeAlert && !isCompleted && (
+          <AlertBanner alert={navigationState.activeAlert} />
+        )}
+
+        {/* Off-Route Alert Card */}
+        {navigationState?.offRouteStatus.isOffRoute && !isCompleted && (
+          <OffRouteCard
+            offRouteStatus={navigationState.offRouteStatus}
+            onRecenter={handleRecenter}
+            onContinue={() => {}}
+          />
+        )}
+
+        {/* Next Stop Countdown Card (In Transit) */}
+        {navigationState?.nextStopInfo &&
+          navigationState.status === 'in_transit' &&
+          !isCompleted && (
+            <NextStopCard
+              nextStopInfo={navigationState.nextStopInfo}
+              mode={currentStep?.mode}
+              routeCode={currentStep?.routeCode}
+            />
+          )}
+
+        {/* Primary Bottom Guidance Card or Completion Card */}
         {isCompleted ? (
           <View style={[styles.completionCard, shadows.floating]}>
             <Text style={styles.completionIcon}>🎉</Text>
@@ -234,11 +304,9 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
             </TouchableOpacity>
           </View>
         ) : (
-          currentStep && (
-            <JourneyInstructionCard
-              status={activeJourney.status}
-              step={currentStep}
-              progressResult={progressResult}
+          navigationState && (
+            <NavigationGuidanceCard
+              navigationState={navigationState}
               onAction={handleStepAction}
               onCancel={() => setShowCancelModal(true)}
             />
@@ -348,11 +416,29 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     backgroundColor: '#CBD5E1',
+    position: 'relative',
   },
   map: {
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  recenterButton: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 25,
+  },
+  recenterText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '800',
+    color: colors.primaryDark,
   },
   bottomArea: {
     position: 'absolute',
