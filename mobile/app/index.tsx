@@ -37,15 +37,21 @@ type AppFlowState =
 
 function MainApp(): React.JSX.Element {
   const [flowState, setFlowState] = useState<AppFlowState>('splash');
+  const [prevFlowState, setPrevFlowState] = useState<AppFlowState>('main');
   const [activeTab, setActiveTab] = useState<MainTabType>('home');
   const [searchMode, setSearchMode] = useState<'destination' | 'origin'>('destination');
   const { startJourney } = useJourney();
 
   // Active Flow State Data
+  const [selectedOrigin, setSelectedOrigin] = useState<Destination | SelectedLocation | string>(
+    'UP Diliman, Quezon City'
+  );
   const [selectedDestination, setSelectedDestination] = useState<
     Destination | SelectedLocation | string
   >('SM North EDSA');
   const [selectedRoute, setSelectedRoute] = useState<Journey | RouteOption>(mockRouteOptions[0]!);
+
+  const activeOriginName = typeof selectedOrigin === 'string' ? selectedOrigin : selectedOrigin.name;
 
   // Navigation handlers
   const handleSplashFinish = (): void => {
@@ -66,17 +72,20 @@ function MainApp(): React.JSX.Element {
 
   const handleOpenSearch = (): void => {
     setSearchMode('destination');
+    setPrevFlowState(flowState);
     setFlowState('search');
   };
 
   const handleOpenOriginSearch = (): void => {
     setSearchMode('origin');
+    setPrevFlowState(flowState);
     setFlowState('search');
   };
 
   const handleSelectDestination = (dest: Destination | SelectedLocation | string): void => {
     if (searchMode === 'origin') {
-      setFlowState('main');
+      setSelectedOrigin(dest);
+      setFlowState(prevFlowState === 'route_options' ? 'route_options' : 'main');
     } else {
       setSelectedDestination(dest);
       setFlowState('route_options');
@@ -153,10 +162,11 @@ function MainApp(): React.JSX.Element {
   if (flowState === 'route_options') {
     return (
       <RouteOptionsScreen
-        origin={typeof window !== 'undefined' ? (window as any).customOriginName || 'UP Diliman' : 'UP Diliman'}
+        origin={selectedOrigin}
         destination={selectedDestination}
         onBack={handleBackToMain}
         onSelectRoute={handleSelectRouteOption}
+        onEditOrigin={handleOpenOriginSearch}
       />
     );
   }
@@ -188,6 +198,7 @@ function MainApp(): React.JSX.Element {
       <View style={styles.tabContent}>
         {activeTab === 'home' && (
           <HomeScreen
+            currentOriginName={activeOriginName}
             onOpenSearch={handleOpenSearch}
             onOpenOriginSearch={handleOpenOriginSearch}
             onSelectDestination={handleSelectDestination}
@@ -201,7 +212,9 @@ function MainApp(): React.JSX.Element {
 
         {activeTab === 'nearby' && (
           <NearbyScreen
+            originName={activeOriginName}
             onOpenSearch={handleOpenSearch}
+            onOpenOriginSearch={handleOpenOriginSearch}
             onSelectTransport={(_item) => {
               setFlowState('route_options');
             }}

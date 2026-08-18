@@ -22,6 +22,7 @@ interface RouteOptionsScreenProps {
   destination: Destination | SelectedLocation | string;
   onBack: () => void;
   onSelectRoute: (journey: Journey) => void;
+  onEditOrigin?: () => void;
 }
 
 type SortOption = 'recommended' | 'fastest' | 'cheapest' | 'least_walking' | 'fewest_transfers';
@@ -49,6 +50,7 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
   destination,
   onBack,
   onSelectRoute,
+  onEditOrigin,
 }) => {
   const originName = typeof origin === 'string' ? origin : origin.name || 'Current Location';
   const originCoords =

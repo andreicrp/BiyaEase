@@ -29,6 +29,7 @@ import { Destination, SavedPlace, RecentTrip } from '../types/index';
 import { locationService } from '../services/locationService';
 
 interface HomeScreenProps {
+  currentOriginName?: string;
   onOpenSearch: () => void;
   onOpenOriginSearch?: () => void;
   onSelectDestination: (dest: Destination) => void;
@@ -42,6 +43,7 @@ interface HomeScreenProps {
 const DEFAULT_USER_LOCATION = { latitude: 14.6538, longitude: 121.0685 }; // UP Diliman / Quezon City
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  currentOriginName,
   onOpenSearch,
   onOpenOriginSearch,
   onSelectSavedPlace,
@@ -57,7 +59,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
 
-  const originName = locationService.getLocationName();
+  const originName = currentOriginName || locationService.getLocationName() || 'UP Diliman, Quezon City';
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>(() => {
     const last = locationService.getLastLocation();

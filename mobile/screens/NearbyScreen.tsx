@@ -21,8 +21,10 @@ import { MapRegion } from '../utils/geoUtils';
 import { NearbyTransport, TransitMode } from '../types/index';
 
 interface NearbyScreenProps {
+  originName?: string;
   onSelectTransport?: (item: NearbyTransport) => void;
   onOpenSearch?: () => void;
+  onOpenOriginSearch?: () => void;
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -38,7 +40,12 @@ const RNScrollView = ScrollView as any;
 const RNActivityIndicator = ActivityIndicator as any;
 const RNAnimatedView = Animated.View as any;
 
-export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, onOpenSearch }) => {
+export const NearbyScreen: React.FC<NearbyScreenProps> = ({
+  originName,
+  onSelectTransport,
+  onOpenSearch,
+  onOpenOriginSearch,
+}) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | TransitMode>('all');
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -231,11 +238,11 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport, o
 
           {/* Input Labels */}
           <RNView style={styles.searchInputsCol}>
-            <RNView style={styles.searchRowItem}>
+            <TouchableOpacity style={styles.searchRowItem} onPress={onOpenOriginSearch || onOpenSearch}>
               <RNText style={styles.originText} numberOfLines={1}>
-                Current Location (UP Diliman)
+                📍 {originName || locationService.getLocationName() || 'UP Diliman, Quezon City'} (✏️ Edit)
               </RNText>
-            </RNView>
+            </TouchableOpacity>
             <RNView style={styles.searchDivider} />
             <RNView style={styles.searchRowItem}>
               <RNText style={styles.destPlaceholder} numberOfLines={1}>
