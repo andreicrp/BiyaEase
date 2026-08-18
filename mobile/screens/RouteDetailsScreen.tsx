@@ -181,6 +181,25 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
   const originName = journey?.origin?.name || legacyOption?.origin || 'Start';
   const destName = journey?.destination?.name || legacyOption?.destination || 'End';
 
+  const getModeEmoji = (mode: JourneyMode | string): string => {
+    switch (mode) {
+      case 'jeepney':
+        return '🛺';
+      case 'mrt':
+        return '🚆';
+      case 'lrt':
+        return '🚈';
+      case 'bus':
+        return '🚌';
+      case 'uvexpress':
+        return '🚐';
+      case 'tricycle':
+        return '🛺';
+      default:
+        return '🚶';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title={`${originName} ➔ ${destName}`} onBack={onBack} />
@@ -250,13 +269,6 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
                 <Text style={styles.modeIconText}>🚶 › 🚌 Bus › 🛺 Jeep › 🚶</Text>
               </View>
             )}
-          </View>
-        </View>
-
-            <View style={styles.metricItem}>
-              <Text style={styles.metricCaption}>TOTAL WALK</Text>
-              <Text style={styles.metricValue}>🚶 {walkingDistance}m</Text>
-            </View>
           </View>
         </View>
 

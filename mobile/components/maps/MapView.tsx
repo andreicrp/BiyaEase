@@ -17,6 +17,7 @@ import { PlaceMarker } from './PlaceMarker';
 import { RoutePolyline } from './RoutePolyline';
 import { MapControls } from './MapControls';
 import { StopInfoCard } from './StopInfoCard';
+import { PlaceInfoCard } from './PlaceInfoCard';
 import { StartEndMarker } from './StartEndMarker';
 import { ApiTransitStop, ApiPlace } from '../../services/transitApiService';
 
