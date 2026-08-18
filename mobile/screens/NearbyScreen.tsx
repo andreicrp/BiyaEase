@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
-import { spacing, borderRadius } from '../constants/spacing';
+import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { MapView } from '../components/maps/MapView';
 import { TransportCard } from '../components/routes/TransportCard';
@@ -27,6 +27,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport })
   const [stops, setStops] = useState<ApiTransitStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
+  const [isMapExpanded, setIsMapExpanded] = useState<boolean>(false);
   const [mapRegion, setMapRegion] = useState<MapRegion>({
     latitude: 14.6538,
     longitude: 121.0685,
@@ -109,74 +110,116 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({ onSelectTransport })
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Nearby Public Transit" subtitle="Live PostGIS Stations & Terminals" />
+      <AppHeader
+        title="Nearby Public Transit"
+        subtitle="Live PostGIS Stations & Terminals"
+        rightAction={
+          <TouchableOpacity
+            style={styles.expandTogglePill}
+            onPress={() => setIsMapExpanded((prev) => !prev)}
+            activeOpacity={0.8}
+            accessibilityLabel={isMapExpanded ? 'Collapse map' : 'Expand full map'}
+          >
+            <Text style={styles.expandToggleIcon}>{isMapExpanded ? '📋' : '🗺️'}</Text>
+            <Text style={styles.expandToggleText}>
+              {isMapExpanded ? 'Show List' : 'Full Map'}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
 
-      {/* Real Interactive MapView */}
-      <View style={styles.mapContainer}>
-        <MapView
-          height={240}
-          region={mapRegion}
-          userLocation={userLocation}
-          stops={filteredStops}
-          selectedStop={selectedStop}
-          onSelectStop={setSelectedStop}
-          onRegionChange={setMapRegion}
-          showControls={true}
-          style={styles.map}
-        />
-        {isLoading && (
-          <View style={styles.loaderBadge}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loaderText}>Querying PostGIS ST_DWithin...</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Mode Filter Bar */}
-      <View style={styles.filterBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
-          {filterTabs.map((tab) => {
-            const isSelected = selectedFilter === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.filterPill, isSelected && styles.activeFilterPill]}
-                onPress={() => setSelectedFilter(tab.key)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Filter by ${tab.label}`}
-              >
-                <Text style={styles.pillIcon}>{tab.icon}</Text>
-                <Text style={[styles.pillLabel, isSelected && styles.activePillLabel]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Nearby Stations List */}
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.mainScroll}
+        contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
       >
-        <Text style={styles.sectionTitle}>NEARBY TRANSIT STOPS ({mappedNearbyList.length})</Text>
+        {/* Real Interactive MapView with Expand/Collapse Height */}
+        <View style={[styles.mapContainer, isMapExpanded && styles.mapContainerExpanded]}>
+          <MapView
+            height={isMapExpanded ? 460 : 260}
+            region={mapRegion}
+            userLocation={userLocation}
+            stops={filteredStops}
+            selectedStop={selectedStop}
+            onSelectStop={setSelectedStop}
+            onRegionChange={setMapRegion}
+            showControls={true}
+            style={styles.map}
+          />
 
-        {mappedNearbyList.length === 0 && !isLoading && (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No stops found for this filter radius.</Text>
+          {/* Map Controls & Status Overlays */}
+          <View style={styles.mapOverlayHeader}>
+            {isLoading && (
+              <View style={styles.loaderBadge}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.loaderText}>Querying PostGIS ST_DWithin...</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.mapResizeButton}
+              onPress={() => setIsMapExpanded((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.mapResizeText}>
+                {isMapExpanded ? '⤡ Compact View' : '⤢ Expand Map'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
-        {mappedNearbyList.map((item) => (
-          <TransportCard key={item.id} item={item} onPress={() => handleSelectFromList(item)} />
-        ))}
+        {/* Mode Filter Bar */}
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {filterTabs.map((tab) => {
+              const isSelected = selectedFilter === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.filterPill, isSelected && styles.activeFilterPill]}
+                  onPress={() => setSelectedFilter(tab.key)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filter by ${tab.label}`}
+                >
+                  <Text style={styles.pillIcon}>{tab.icon}</Text>
+                  <Text style={[styles.pillLabel, isSelected && styles.activePillLabel]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Nearby Stations List Section */}
+        <View style={styles.stopsSection}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>
+              NEARBY TRANSIT STOPS ({mappedNearbyList.length})
+            </Text>
+            <Text style={styles.sectionSubtitle}>Tap a stop to focus on map</Text>
+          </View>
+
+          {mappedNearbyList.length === 0 && !isLoading && (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No stops found for this filter radius.</Text>
+            </View>
+          )}
+
+          {mappedNearbyList.map((item) => (
+            <TransportCard
+              key={item.id}
+              item={item}
+              onPress={() => handleSelectFromList(item)}
+            />
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -187,32 +230,85 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  expandTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
+  },
+  expandToggleIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  expandToggleText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+  mainScroll: {
+    flex: 1,
+  },
+  mainScrollContent: {
+    paddingBottom: spacing.huge,
+  },
   mapContainer: {
     width: '100%',
-    height: 240,
+    height: 260,
     backgroundColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  mapContainerExpanded: {
+    height: 460,
   },
   map: {
     borderRadius: 0,
   },
-  loaderBadge: {
+  mapOverlayHeader: {
     position: 'absolute',
     top: 10,
     left: 10,
+    right: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    justifyContent: 'space-between',
+    pointerEvents: 'box-none',
+  },
+  loaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.subtle,
   },
   loaderText: {
     fontSize: typography.fontSize.xxs,
     color: colors.primaryDark,
     fontWeight: '700',
     marginLeft: 6,
+  },
+  mapResizeButton: {
+    marginLeft: 'auto',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.subtle,
+  },
+  mapResizeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
   },
   filterBar: {
     backgroundColor: colors.surface,
@@ -251,20 +347,25 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontWeight: '700',
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
+  stopsSection: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.huge,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: typography.fontSize.xxs,
     fontWeight: '800',
     color: colors.textSecondary,
     letterSpacing: 0.5,
-    marginBottom: spacing.sm,
+  },
+  sectionSubtitle: {
+    fontSize: 10,
+    color: colors.textMuted,
   },
   emptyCard: {
     backgroundColor: colors.surface,
