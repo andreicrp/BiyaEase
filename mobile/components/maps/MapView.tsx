@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -118,17 +118,25 @@ export const MapView: React.FC<MapViewProps> = ({
   const [activeStop, setActiveStop] = useState<ApiTransitStop | null>(null);
   const [activePlace, setActivePlace] = useState<ApiPlace | null>(null);
 
-  // 1. Sync controlled region safely with value equality comparison (prevents infinite render loops)
+  // Tracks active gesture state to prevent prop sync interference
+  const isGestureActiveRef = useRef<boolean>(false);
+  const lastControlledRegionRef = useRef<MapRegion | undefined>(controlledRegion);
+  const animFrameIdRef = useRef<number | null>(null);
+
+  // 1. Sync controlled region safely comparing against previous controlled prop
   useEffect(() => {
     if (controlledRegion) {
-      const prev = regionRef.current;
-      const isDifferent =
+      const prev = lastControlledRegionRef.current;
+      const isNewProp =
+        !prev ||
         Math.abs(prev.latitude - controlledRegion.latitude) > 0.00001 ||
         Math.abs(prev.longitude - controlledRegion.longitude) > 0.00001 ||
         Math.abs(prev.latitudeDelta - controlledRegion.latitudeDelta) > 0.00001 ||
         Math.abs(prev.longitudeDelta - controlledRegion.longitudeDelta) > 0.00001;
 
-      if (isDifferent) {
+      lastControlledRegionRef.current = controlledRegion;
+
+      if (isNewProp && !isGestureActiveRef.current) {
         setCurrentRegion(controlledRegion);
       }
     }
@@ -152,7 +160,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [controlledSelectedPlace]);
 
-  // 3. Fit camera bounds safely by tracking coordinate fingerprint (prevents array identity loop)
+  // 3. Fit camera bounds safely by tracking coordinate fingerprint
   const fitCoordsKey = useMemo(() => {
     if (!fitCoordinates || fitCoordinates.length === 0) return '';
     return fitCoordinates
@@ -184,14 +192,20 @@ export const MapView: React.FC<MapViewProps> = ({
   // Web Mercator calculations
   const numTiles = useMemo(() => Math.pow(2, zoomLevel), [zoomLevel]);
 
-  const lat2tileY = (lat: number): number => {
-    const latRad = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
-    return ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * numTiles;
-  };
+  const lat2tileY = useCallback(
+    (lat: number): number => {
+      const latRad = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
+      return ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * numTiles;
+    },
+    [numTiles]
+  );
 
-  const lng2tileX = (lng: number): number => {
-    return ((lng + 180) / 360) * numTiles;
-  };
+  const lng2tileX = useCallback(
+    (lng: number): number => {
+      return ((lng + 180) / 360) * numTiles;
+    },
+    [numTiles]
+  );
 
   const centerTileX = lng2tileX(currentRegion.longitude);
   const centerTileY = lat2tileY(currentRegion.latitude);
@@ -203,15 +217,18 @@ export const MapView: React.FC<MapViewProps> = ({
   const viewportTopLeftY = centerPixelY - dimensions.height / 2;
 
   // Project latitude/longitude coordinate to viewport pixel (X, Y)
-  const projectToPixels = (coord: Coordinates): { x: number; y: number } => {
-    const tileX = lng2tileX(coord.longitude);
-    const tileY = lat2tileY(coord.latitude);
+  const projectToPixels = useCallback(
+    (coord: Coordinates): { x: number; y: number } => {
+      const tileX = lng2tileX(coord.longitude);
+      const tileY = lat2tileY(coord.latitude);
 
-    const px = tileX * TILE_SIZE - viewportTopLeftX;
-    const py = tileY * TILE_SIZE - viewportTopLeftY;
+      const px = tileX * TILE_SIZE - viewportTopLeftX;
+      const py = tileY * TILE_SIZE - viewportTopLeftY;
 
-    return { x: px, y: py };
-  };
+      return { x: px, y: py };
+    },
+    [lng2tileX, lat2tileY, viewportTopLeftX, viewportTopLeftY]
+  );
 
   // Generate visible cartography map tiles using CartoDB Voyager CDN
   const visibleTiles = useMemo(() => {
@@ -276,7 +293,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  // High-performance smooth gesture state
+  // High-performance smooth gesture state with batched animation frame scheduling
   const gestureStateRef = useRef<{
     lastTouchTime: number;
     lastDistance: number | null;
@@ -295,11 +312,10 @@ export const MapView: React.FC<MapViewProps> = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
-        Math.abs(gesture.dx) > 1.5 ||
-        Math.abs(gesture.dy) > 1.5 ||
-        gesture.numberActiveTouches >= 2,
+        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2 || gesture.numberActiveTouches >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent) => {
+        isGestureActiveRef.current = true;
         const dist = getTouchDistance(evt);
         const mid = getTouchMidpoint(evt);
         gestureStateRef.current = {
@@ -315,64 +331,84 @@ export const MapView: React.FC<MapViewProps> = ({
         const touches = evt.nativeEvent.touches;
         const reg = regionRef.current;
 
-        // 1. Smooth Progressive Two-Finger Pinch Zoom
-        if (touches && touches.length >= 2) {
-          const currentDistance = getTouchDistance(evt);
-          const currentMid = getTouchMidpoint(evt);
-          const lastDist = gestureStateRef.current.lastDistance;
-
-          if (currentDistance && lastDist && lastDist > 10) {
-            const rawRatio = lastDist / currentDistance;
-            // Apply subtle dampening curve for silky smooth zoom feel
-            const dampedRatio = 1 + (rawRatio - 1) * 0.75;
-            const newDelta = Math.max(Math.min(reg.longitudeDelta * dampedRatio, 0.35), 0.003);
-
-            let newLat = reg.latitude;
-            let newLng = reg.longitude;
-
-            // Pan with midpoint movement while pinching
-            if (currentMid && gestureStateRef.current.lastMidpoint) {
-              const dMidX = currentMid.x - gestureStateRef.current.lastMidpoint.x;
-              const dMidY = currentMid.y - gestureStateRef.current.lastMidpoint.y;
-              newLng -= (dMidX / dimensions.width) * reg.longitudeDelta;
-              newLat += (dMidY / dimensions.height) * reg.latitudeDelta;
-            }
-
-            gestureStateRef.current.lastDistance = currentDistance;
-            gestureStateRef.current.lastMidpoint = currentMid;
-
-            setCurrentRegion({
-              latitude: newLat,
-              longitude: newLng,
-              latitudeDelta: newDelta,
-              longitudeDelta: newDelta,
-            });
-            return;
-          }
+        // Cancel pending frame to avoid backlog
+        if (animFrameIdRef.current !== null) {
+          cancelAnimationFrame(animFrameIdRef.current);
         }
 
-        // 2. Responsive One-Finger Smooth Pan
-        const { width, height: h } = dimensions;
-        const dLng = -(gesture.dx / width) * reg.longitudeDelta;
-        const dLat = (gesture.dy / h) * reg.latitudeDelta;
+        // Schedule state update on next animation frame (silky 60fps without update depth errors)
+        animFrameIdRef.current = requestAnimationFrame(() => {
+          // 1. Smooth Progressive Two-Finger Pinch Zoom
+          if (touches && touches.length >= 2) {
+            const currentDistance = getTouchDistance(evt);
+            const currentMid = getTouchMidpoint(evt);
+            const lastDist = gestureStateRef.current.lastDistance;
 
-        const nextLat = gestureStateRef.current.startLat + dLat;
-        const nextLng = gestureStateRef.current.startLng + dLng;
+            if (currentDistance && lastDist && lastDist > 10) {
+              const rawRatio = lastDist / currentDistance;
+              const dampedRatio = 1 + (rawRatio - 1) * 0.75;
+              const newDelta = Math.max(Math.min(reg.longitudeDelta * dampedRatio, 0.35), 0.003);
 
-        setCurrentRegion({
-          ...reg,
-          latitude: nextLat,
-          longitude: nextLng,
+              let newLat = reg.latitude;
+              let newLng = reg.longitude;
+
+              if (currentMid && gestureStateRef.current.lastMidpoint) {
+                const dMidX = currentMid.x - gestureStateRef.current.lastMidpoint.x;
+                const dMidY = currentMid.y - gestureStateRef.current.lastMidpoint.y;
+                newLng -= (dMidX / dimensions.width) * reg.longitudeDelta;
+                newLat += (dMidY / dimensions.height) * reg.latitudeDelta;
+              }
+
+              gestureStateRef.current.lastDistance = currentDistance;
+              gestureStateRef.current.lastMidpoint = currentMid;
+
+              setCurrentRegion({
+                latitude: newLat,
+                longitude: newLng,
+                latitudeDelta: newDelta,
+                longitudeDelta: newDelta,
+              });
+              return;
+            }
+          }
+
+          // 2. Responsive One-Finger Smooth Pan
+          const { width, height: h } = dimensions;
+          const dLng = -(gesture.dx / width) * reg.longitudeDelta;
+          const dLat = (gesture.dy / h) * reg.latitudeDelta;
+
+          const nextLat = gestureStateRef.current.startLat + dLat;
+          const nextLng = gestureStateRef.current.startLng + dLng;
+
+          setCurrentRegion({
+            ...reg,
+            latitude: nextLat,
+            longitude: nextLng,
+          });
         });
       },
 
       onPanResponderRelease: () => {
+        isGestureActiveRef.current = false;
         gestureStateRef.current.lastDistance = null;
         gestureStateRef.current.lastMidpoint = null;
+        if (animFrameIdRef.current !== null) {
+          cancelAnimationFrame(animFrameIdRef.current);
+          animFrameIdRef.current = null;
+        }
         onRegionChange?.(regionRef.current);
       },
     })
   ).current;
+
+  // Cleanup anim frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animFrameIdRef.current !== null) {
+        cancelAnimationFrame(animFrameIdRef.current);
+      }
+    };
+  }, []);
 
   // Selection handlers
   const handleStopPress = (stop: ApiTransitStop) => {

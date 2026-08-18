@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useJourney } from '../context/JourneyContext';
 import { MapView } from '../components/maps/MapView';
@@ -43,41 +43,59 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
   const isCompleted = activeJourney.status === 'completed';
 
   // Extract stops and destination for MapView
-  const mapStops: ApiTransitStop[] = activeJourney.steps
-    .filter(
-      (s) =>
-        s.latitude !== undefined &&
-        s.longitude !== undefined &&
-        (s.type === 'board' || s.type === 'alight')
-    )
-    .map((s) => ({
-      id: String(s.fromStopId || s.toStopId || s.id),
-      name: s.fromStopName || s.toStopName || s.title,
-      code: s.routeCode || 'STOP',
-      latitude: s.latitude!,
-      longitude: s.longitude!,
-      mode: (s.mode as import('../types').TransitMode) || 'bus',
-      mode_color: s.mode === 'jeepney' ? '#E11D48' : s.mode === 'mrt' ? '#2563EB' : '#0D9488',
-    }));
+  const mapStops: ApiTransitStop[] = useMemo(
+    () =>
+      activeJourney.steps
+        .filter(
+          (s) =>
+            s.latitude !== undefined &&
+            s.longitude !== undefined &&
+            (s.type === 'board' || s.type === 'alight')
+        )
+        .map((s) => ({
+          id: String(s.fromStopId || s.toStopId || s.id),
+          name: s.fromStopName || s.toStopName || s.title,
+          code: s.routeCode || 'STOP',
+          latitude: s.latitude!,
+          longitude: s.longitude!,
+          mode: (s.mode as import('../types').TransitMode) || 'bus',
+          mode_color: s.mode === 'jeepney' ? '#E11D48' : s.mode === 'mrt' ? '#2563EB' : '#0D9488',
+        })),
+    [activeJourney.steps]
+  );
 
-  const mapPlaces: ApiPlace[] = [
-    {
-      id: 'active-dest',
-      name: activeJourney.destination.name || 'Destination',
-      category: 'Destination',
-      address: activeJourney.destination.name || 'Metro Manila',
-      latitude: activeJourney.destination.latitude,
-      longitude: activeJourney.destination.longitude,
-    },
-  ];
+  const mapPlaces: ApiPlace[] = useMemo(
+    () => [
+      {
+        id: 'active-dest',
+        name: activeJourney.destination.name || 'Destination',
+        category: 'Destination',
+        address: activeJourney.destination.name || 'Metro Manila',
+        latitude: activeJourney.destination.latitude,
+        longitude: activeJourney.destination.longitude,
+      },
+    ],
+    [activeJourney.destination.latitude, activeJourney.destination.longitude, activeJourney.destination.name]
+  );
 
-  const mapRegion = {
-    latitude: currentStep?.latitude || currentLocation?.latitude || activeJourney.origin.latitude,
-    longitude:
-      currentStep?.longitude || currentLocation?.longitude || activeJourney.origin.longitude,
-    latitudeDelta: 0.03,
-    longitudeDelta: 0.03,
-  };
+  const mapRegion = useMemo(
+    () => ({
+      latitude:
+        currentStep?.latitude || currentLocation?.latitude || activeJourney.origin.latitude,
+      longitude:
+        currentStep?.longitude || currentLocation?.longitude || activeJourney.origin.longitude,
+      latitudeDelta: 0.03,
+      longitudeDelta: 0.03,
+    }),
+    [
+      currentStep?.latitude,
+      currentStep?.longitude,
+      currentLocation?.latitude,
+      currentLocation?.longitude,
+      activeJourney.origin.latitude,
+      activeJourney.origin.longitude,
+    ]
+  );
 
   const handleStepAction = () => {
     if (
