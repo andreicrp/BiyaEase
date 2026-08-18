@@ -78,12 +78,12 @@ The navigation engine deterministically transitions through the following states
 
 - **Deduplication**: Keyed by `${stepIndex}_${alertType}` ensuring that alerts fire **exactly once per journey step**.
 - **Haptic Patterns**:
-  - *Boarding Approach*: 2 short pulses `[100ms, 100ms, 100ms]`.
-  - *Boarding Arrival*: 1 solid pulse `[250ms]`.
-  - *Alighting Approach*: 3 urgent pulses `[150ms, 100ms, 150ms, 100ms, 200ms]`.
-  - *Transfer*: Double pulse `[120ms, 80ms, 120ms]`.
-  - *Destination Arrival*: Celebration sequence `[200ms, 100ms, 200ms, 100ms, 400ms]`.
-  - *Off-Route Warning*: Long warning vibration `[300ms, 150ms, 300ms]`.
+  - _Boarding Approach_: 2 short pulses `[100ms, 100ms, 100ms]`.
+  - _Boarding Arrival_: 1 solid pulse `[250ms]`.
+  - _Alighting Approach_: 3 urgent pulses `[150ms, 100ms, 150ms, 100ms, 200ms]`.
+  - _Transfer_: Double pulse `[120ms, 80ms, 120ms]`.
+  - _Destination Arrival_: Celebration sequence `[200ms, 100ms, 200ms, 100ms, 400ms]`.
+  - _Off-Route Warning_: Long warning vibration `[300ms, 150ms, 300ms]`.
 - **Audio Chimes**: Synthesizes pleasant Web Audio tones (e.g., C5-E5-G5 for arrival, high A5 for alighting alert) with safe non-blocking fallbacks.
 
 ---

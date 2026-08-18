@@ -204,7 +204,20 @@ export class GtfsImporter {
       await BatchInserter.insertBatch(
         client,
         'routes',
-        ['id', 'source_id', 'dataset_id', 'external_id', 'agency_id', 'mode_id', 'code', 'name', 'description', 'route_color', 'is_active', 'source'],
+        [
+          'id',
+          'source_id',
+          'dataset_id',
+          'external_id',
+          'agency_id',
+          'mode_id',
+          'code',
+          'name',
+          'description',
+          'route_color',
+          'is_active',
+          'source',
+        ],
         normRoutes as unknown as Record<string, unknown>[],
         500
       );
@@ -235,7 +248,16 @@ export class GtfsImporter {
       await BatchInserter.insertBatch(
         client,
         'route_variants',
-        ['id', 'dataset_id', 'external_id', 'route_id', 'name', 'direction', 'description', 'is_active'],
+        [
+          'id',
+          'dataset_id',
+          'external_id',
+          'route_id',
+          'name',
+          'direction',
+          'description',
+          'is_active',
+        ],
         normVariants as unknown as Record<string, unknown>[],
         500
       );
@@ -307,7 +329,17 @@ export class GtfsImporter {
       await BatchInserter.insertBatch(
         client,
         'trips',
-        ['id', 'dataset_id', 'external_id', 'route_variant_id', 'service_id', 'code', 'headsign', 'direction', 'is_active'],
+        [
+          'id',
+          'dataset_id',
+          'external_id',
+          'route_variant_id',
+          'service_id',
+          'code',
+          'headsign',
+          'direction',
+          'is_active',
+        ],
         normTrips as unknown as Record<string, unknown>[],
         500
       );

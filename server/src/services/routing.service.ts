@@ -68,13 +68,25 @@ export class RoutingService {
         const modesList = [mode, 'walking'];
         const routeCodesList = [row.route_code || mode.toUpperCase()];
         if (mode === 'jeepney') routeCodesList.push('JEEP-05');
-        if (rawCode.includes('EDSA') || rawCode.includes('NORTH') || rawCode.includes('CUBAO') || rawCode.includes('TRINOMA')) {
+        if (
+          rawCode.includes('EDSA') ||
+          rawCode.includes('NORTH') ||
+          rawCode.includes('CUBAO') ||
+          rawCode.includes('TRINOMA')
+        ) {
           if (!modesList.includes('mrt')) modesList.push('mrt');
         }
 
         return {
           id: `gtfs-${row.route_id}-${idx}`,
-          label: idx === 0 ? 'FASTEST' : idx === 1 ? 'CHEAPEST' : idx === 2 ? 'LESS WALKING' : 'FEWER TRANSFERS',
+          label:
+            idx === 0
+              ? 'FASTEST'
+              : idx === 1
+                ? 'CHEAPEST'
+                : idx === 2
+                  ? 'LESS WALKING'
+                  : 'FEWER TRANSFERS',
           isRecommended: idx === 0,
           durationMinutes: durationMin,
           fare: fareVal,
@@ -128,7 +140,7 @@ export class RoutingService {
               mode: mode,
               routeId: row.route_id,
               routeName: row.route_name,
-              routeCode: mode === 'jeepney' ? 'JEEP-05' : (row.route_code || 'JEEP-05'),
+              routeCode: mode === 'jeepney' ? 'JEEP-05' : row.route_code || 'JEEP-05',
               modeColor: row.mode_color || '#0F766E',
               fromStop: {
                 id: row.from_stop_id,
@@ -165,7 +177,9 @@ export class RoutingService {
       const directDist = Math.round(
         Math.hypot(
           (destination.latitude - origin.latitude) * 111000,
-          (destination.longitude - origin.longitude) * 111000 * Math.cos((origin.latitude * Math.PI) / 180)
+          (destination.longitude - origin.longitude) *
+            111000 *
+            Math.cos((origin.latitude * Math.PI) / 180)
         )
       );
 
@@ -188,8 +202,18 @@ export class RoutingService {
             {
               type: 'walking',
               mode: 'walking',
-              fromStop: { id: 'orig', name: origin.name || 'Origin', latitude: origin.latitude, longitude: origin.longitude },
-              toStop: { id: 'dest', name: destination.name || 'Destination', latitude: destination.latitude, longitude: destination.longitude },
+              fromStop: {
+                id: 'orig',
+                name: origin.name || 'Origin',
+                latitude: origin.latitude,
+                longitude: origin.longitude,
+              },
+              toStop: {
+                id: 'dest',
+                name: destination.name || 'Destination',
+                latitude: destination.latitude,
+                longitude: destination.longitude,
+              },
               durationMinutes: walkMin,
               distanceMeters: directDist,
               fare: 0,
@@ -206,8 +230,16 @@ export class RoutingService {
 
     // 2. Fallback to graph pathfinding if no direct ST_DWithin stops match
     const [originStops, destStops, transferPairs, networkData] = await Promise.all([
-      routingRepository.findNearbyStops(origin.latitude, origin.longitude, maxWalkingDistanceMeters),
-      routingRepository.findNearbyStops(destination.latitude, destination.longitude, maxWalkingDistanceMeters),
+      routingRepository.findNearbyStops(
+        origin.latitude,
+        origin.longitude,
+        maxWalkingDistanceMeters
+      ),
+      routingRepository.findNearbyStops(
+        destination.latitude,
+        destination.longitude,
+        maxWalkingDistanceMeters
+      ),
       routingRepository.findTransferPairs(450),
       routingRepository.getTransitNetworkEdges(),
     ]);

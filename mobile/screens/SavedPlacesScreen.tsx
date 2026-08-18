@@ -165,7 +165,10 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
     const lng = parseFloat(addLng);
 
     if (isNaN(lat) || lat < -90 || lat > 90 || isNaN(lng) || lng < -180 || lng > 180) {
-      Alert.alert('Validation Error', 'Please enter valid latitude (-90 to 90) and longitude (-180 to 180)');
+      Alert.alert(
+        'Validation Error',
+        'Please enter valid latitude (-90 to 90) and longitude (-180 to 180)'
+      );
       return;
     }
 
@@ -183,33 +186,29 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
       setAddName('');
       setAddSubtitle('');
     } else if (res.requiresReplace) {
-      Alert.alert(
-        'Replace Existing Location?',
-        res.error,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Replace',
-            style: 'destructive',
-            onPress: async () => {
-              await savePlace(
-                {
-                  name: addName.trim(),
-                  subtitle: addSubtitle.trim() || undefined,
-                  latitude: lat,
-                  longitude: lng,
-                  category: addCategory,
-                  type: 'place',
-                },
-                { forceReplaceCategory: true }
-              );
-              setShowAddModal(false);
-              setAddName('');
-              setAddSubtitle('');
-            },
+      Alert.alert('Replace Existing Location?', res.error, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Replace',
+          style: 'destructive',
+          onPress: async () => {
+            await savePlace(
+              {
+                name: addName.trim(),
+                subtitle: addSubtitle.trim() || undefined,
+                latitude: lat,
+                longitude: lng,
+                category: addCategory,
+                type: 'place',
+              },
+              { forceReplaceCategory: true }
+            );
+            setShowAddModal(false);
+            setAddName('');
+            setAddSubtitle('');
           },
-        ]
-      );
+        },
+      ]);
     } else {
       Alert.alert('Error', res.error || 'Failed to save place');
     }
@@ -239,10 +238,7 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
             <RNText style={styles.emptySubtitle}>
               Save your Home, Work, School, or favorite spots for 1-tap commute planning.
             </RNText>
-            <RNTouchableOpacity
-              style={styles.emptyAddButton}
-              onPress={() => setShowAddModal(true)}
-            >
+            <RNTouchableOpacity style={styles.emptyAddButton} onPress={() => setShowAddModal(true)}>
               <RNText style={styles.emptyAddButtonText}>+ Save Your First Place</RNText>
             </RNTouchableOpacity>
           </RNView>
@@ -293,8 +289,17 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
       </ScrollView>
 
       {/* Action Sheet Modal */}
-      <RNModal visible={showActionModal} transparent animationType="fade" onRequestClose={() => setShowActionModal(false)}>
-        <RNTouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowActionModal(false)}>
+      <RNModal
+        visible={showActionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionModal(false)}
+      >
+        <RNTouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionModal(false)}
+        >
           <RNView style={styles.actionModalContainer}>
             <RNText style={styles.actionModalTitle}>{activePlace?.name}</RNText>
             {activePlace?.subtitle && (
@@ -316,16 +321,26 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
               <RNText style={styles.actionOptionText}>Edit Location</RNText>
             </RNTouchableOpacity>
 
-            <RNTouchableOpacity style={[styles.actionOptionBtn, styles.deleteOptionBtn]} onPress={handleOpenDelete}>
+            <RNTouchableOpacity
+              style={[styles.actionOptionBtn, styles.deleteOptionBtn]}
+              onPress={handleOpenDelete}
+            >
               <RNText style={styles.actionOptionIcon}>🗑️</RNText>
-              <RNText style={[styles.actionOptionText, styles.deleteOptionText]}>Delete Location</RNText>
+              <RNText style={[styles.actionOptionText, styles.deleteOptionText]}>
+                Delete Location
+              </RNText>
             </RNTouchableOpacity>
           </RNView>
         </RNTouchableOpacity>
       </RNModal>
 
       {/* Edit Place Modal */}
-      <RNModal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
+      <RNModal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
         <RNView style={styles.modalOverlay}>
           <RNView style={styles.dialogModalContainer}>
             <RNText style={styles.dialogTitle}>Edit Saved Place</RNText>
@@ -346,7 +361,12 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
                   style={[styles.categoryChip, editCategory === cat && styles.categoryChipActive]}
                   onPress={() => setEditCategory(cat)}
                 >
-                  <RNText style={[styles.categoryChipText, editCategory === cat && styles.categoryChipTextActive]}>
+                  <RNText
+                    style={[
+                      styles.categoryChipText,
+                      editCategory === cat && styles.categoryChipTextActive,
+                    ]}
+                  >
                     {getCategoryIcon(cat)} {cat.toUpperCase()}
                   </RNText>
                 </RNTouchableOpacity>
@@ -366,7 +386,12 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
       </RNModal>
 
       {/* Delete Confirmation Modal */}
-      <RNModal visible={showDeleteConfirmModal} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirmModal(false)}>
+      <RNModal
+        visible={showDeleteConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirmModal(false)}
+      >
         <RNView style={styles.modalOverlay}>
           <RNView style={styles.dialogModalContainer}>
             <RNText style={styles.dialogTitle}>Remove Saved Place?</RNText>
@@ -375,7 +400,10 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
             </RNText>
 
             <RNView style={styles.dialogActions}>
-              <RNTouchableOpacity style={styles.cancelBtn} onPress={() => setShowDeleteConfirmModal(false)}>
+              <RNTouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowDeleteConfirmModal(false)}
+              >
                 <RNText style={styles.cancelBtnText}>Cancel</RNText>
               </RNTouchableOpacity>
               <RNTouchableOpacity style={styles.deleteConfirmBtn} onPress={handleConfirmDelete}>
@@ -387,7 +415,12 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
       </RNModal>
 
       {/* Add New Place Modal */}
-      <RNModal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+      <RNModal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
         <RNView style={styles.modalOverlay}>
           <RNView style={styles.dialogModalContainer}>
             <RNText style={styles.dialogTitle}>Save New Location</RNText>
@@ -411,11 +444,21 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
             <RNView style={styles.coordRow}>
               <RNView style={styles.coordCol}>
                 <RNText style={styles.fieldLabel}>LATITUDE</RNText>
-                <RNTextInput style={styles.textInput} value={addLat} onChangeText={setAddLat} keyboardType="numeric" />
+                <RNTextInput
+                  style={styles.textInput}
+                  value={addLat}
+                  onChangeText={setAddLat}
+                  keyboardType="numeric"
+                />
               </RNView>
               <RNView style={styles.coordCol}>
                 <RNText style={styles.fieldLabel}>LONGITUDE</RNText>
-                <RNTextInput style={styles.textInput} value={addLng} onChangeText={setAddLng} keyboardType="numeric" />
+                <RNTextInput
+                  style={styles.textInput}
+                  value={addLng}
+                  onChangeText={setAddLng}
+                  keyboardType="numeric"
+                />
               </RNView>
             </RNView>
 
@@ -427,7 +470,12 @@ export const SavedPlacesScreen: React.FC<SavedPlacesScreenProps> = ({
                   style={[styles.categoryChip, addCategory === cat && styles.categoryChipActive]}
                   onPress={() => setAddCategory(cat)}
                 >
-                  <RNText style={[styles.categoryChipText, addCategory === cat && styles.categoryChipTextActive]}>
+                  <RNText
+                    style={[
+                      styles.categoryChipText,
+                      addCategory === cat && styles.categoryChipTextActive,
+                    ]}
+                  >
                     {getCategoryIcon(cat)} {cat.toUpperCase()}
                   </RNText>
                 </RNTouchableOpacity>

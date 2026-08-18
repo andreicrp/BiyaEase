@@ -15,8 +15,13 @@ export const NavigationGuidanceCard: React.FC<NavigationGuidanceCardProps> = ({
   navigationState,
   onAction,
 }) => {
-  const { currentStep, status, distanceToTargetMeters, estimatedRemainingMinutes, progressPercent } =
-    navigationState;
+  const {
+    currentStep,
+    status,
+    distanceToTargetMeters,
+    estimatedRemainingMinutes,
+    progressPercent,
+  } = navigationState;
 
   if (!currentStep) return null;
 

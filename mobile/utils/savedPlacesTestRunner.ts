@@ -1,6 +1,5 @@
 import { localSavedPlacesRepository } from '../repositories/savedPlacesRepository';
 import { localStorageService } from '../services/localStorageService';
-import { SavedPlace } from '../types/savedData.types';
 
 let passed = 0;
 let failed = 0;
@@ -70,7 +69,10 @@ async function runTests() {
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
-  assert(dup1.success && dup1.place?.id === 'sp-upd', 'Deduplicates saved place with same normalized name and <30m distance');
+  assert(
+    dup1.success && dup1.place?.id === 'sp-upd',
+    'Deduplicates saved place with same normalized name and <30m distance'
+  );
 
   // ----------------------------------------------------
   // 3. Home & Work Category Uniqueness
@@ -78,8 +80,8 @@ async function runTests() {
   const home1 = await localSavedPlacesRepository.save({
     id: 'sp-home-1',
     name: 'My Condo',
-    latitude: 14.6500,
-    longitude: 121.0600,
+    latitude: 14.65,
+    longitude: 121.06,
     category: 'home',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -89,20 +91,23 @@ async function runTests() {
   const home2Attempt = await localSavedPlacesRepository.save({
     id: 'sp-home-2',
     name: 'My Apartment',
-    latitude: 14.6000,
-    longitude: 121.0000,
+    latitude: 14.6,
+    longitude: 121.0,
     category: 'home',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
-  assert(!home2Attempt.success && home2Attempt.requiresReplace === 'home', 'Triggers replacement confirmation prompt for 2nd Home entry');
+  assert(
+    !home2Attempt.success && home2Attempt.requiresReplace === 'home',
+    'Triggers replacement confirmation prompt for 2nd Home entry'
+  );
 
   const home2Force = await localSavedPlacesRepository.save(
     {
       id: 'sp-home-2',
       name: 'My Apartment',
-      latitude: 14.6000,
-      longitude: 121.0000,
+      latitude: 14.6,
+      longitude: 121.0,
       category: 'home',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -113,7 +118,10 @@ async function runTests() {
 
   const allPlacesAfterHomeReplace = await localSavedPlacesRepository.getAll();
   const homeEntries = allPlacesAfterHomeReplace.filter((p) => p.category === 'home');
-  assert(homeEntries.length === 1 && homeEntries[0]?.id === 'sp-home-2', 'Enforces strict single Home category entry');
+  assert(
+    homeEntries.length === 1 && homeEntries[0]?.id === 'sp-home-2',
+    'Enforces strict single Home category entry'
+  );
 
   // ----------------------------------------------------
   // 4. Edit, Rename & Category Changes
@@ -122,8 +130,8 @@ async function runTests() {
     id: 'sp-home-2',
     name: 'My New Apartment',
     subtitle: 'Makati City',
-    latitude: 14.6000,
-    longitude: 121.0000,
+    latitude: 14.6,
+    longitude: 121.0,
     category: 'home',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -145,7 +153,10 @@ async function runTests() {
   // ----------------------------------------------------
   await localStorageService.setItem('biyaease.savedPlaces.v1', '{ corrupted_json: true');
   const corruptedFallback = await localSavedPlacesRepository.getAll();
-  assert(Array.isArray(corruptedFallback), 'Safely recovers from corrupted storage JSON without crashing');
+  assert(
+    Array.isArray(corruptedFallback),
+    'Safely recovers from corrupted storage JSON without crashing'
+  );
 
   console.log(`\n📊 SAVED PLACES TEST SUMMARY: ${passed} passed, ${failed} failed.\n`);
 

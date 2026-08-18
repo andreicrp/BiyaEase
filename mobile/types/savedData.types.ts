@@ -1,11 +1,6 @@
 import { SearchResultType } from './search.types';
 
-export type SavedPlaceCategory =
-  | 'home'
-  | 'work'
-  | 'school'
-  | 'favorite'
-  | 'other';
+export type SavedPlaceCategory = 'home' | 'work' | 'school' | 'favorite' | 'other';
 
 export interface SavedPlace {
   id: string;
@@ -45,7 +40,15 @@ export interface FavoriteRoute {
 export interface SavedPlacesRepository {
   getAll(): Promise<SavedPlace[]>;
   getById(id: string): Promise<SavedPlace | null>;
-  save(place: SavedPlace, options?: { forceReplaceCategory?: boolean }): Promise<{ success: boolean; place?: SavedPlace; requiresReplace?: 'home' | 'work'; error?: string }>;
+  save(
+    place: SavedPlace,
+    options?: { forceReplaceCategory?: boolean }
+  ): Promise<{
+    success: boolean;
+    place?: SavedPlace;
+    requiresReplace?: 'home' | 'work';
+    error?: string;
+  }>;
   update(place: SavedPlace): Promise<{ success: boolean; error?: string }>;
   delete(id: string): Promise<{ success: boolean; error?: string }>;
 }

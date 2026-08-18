@@ -7,12 +7,10 @@ import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { MapView, MapPolylineItem } from '../components/maps/MapView';
 import { PrimaryButton } from '../components/common/PrimaryButton';
-import { FareBadge } from '../components/common/FareBadge';
-import { TimeBadge } from '../components/common/TimeBadge';
 import { ApiTransitStop } from '../services/transitApiService';
 import { Coordinates, interpolateRoadCorridor } from '../utils/geoUtils';
 import { RouteOption } from '../types/index';
-import { Journey, JourneyMode } from '../types/routing.types';
+import { Journey } from '../types/routing.types';
 
 interface RouteDetailsScreenProps {
   route: Journey | RouteOption;
@@ -41,9 +39,9 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
   const walkingDistance = journey
     ? journey.walkingDistanceMeters
     : legacyOption?.walkingDistanceMeters || 300;
-  const transfersCount = journey ? journey.transfers : legacyOption?.transfersCount || 0;
-  const summaryTitle = journey ? journey.summary : legacyOption?.summary || 'Route Details';
-  const labelText = journey?.label || legacyOption?.label || 'COMMUTE OPTION';
+  const _transfersCount = journey ? journey.transfers : legacyOption?.transfersCount || 0;
+  const _summaryTitle = journey ? journey.summary : legacyOption?.summary || 'Route Details';
+  const _labelText = journey?.label || legacyOption?.label || 'COMMUTE OPTION';
 
   useEffect(() => {
     if (journey) {
@@ -96,8 +94,8 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
         id: `step-stop-${idx}`,
         name: s.originStop || s.title,
         code: `STOP-${idx + 1}`,
-        latitude: s.coordinates?.latitude || (14.6538 - idx * 0.001),
-        longitude: s.coordinates?.longitude || (121.0685 - idx * 0.01),
+        latitude: s.coordinates?.latitude || 14.6538 - idx * 0.001,
+        longitude: s.coordinates?.longitude || 121.0685 - idx * 0.01,
         mode: s.mode,
       }));
 
@@ -117,7 +115,9 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
     if (journey?.destination?.latitude && journey?.destination?.longitude) {
       return { latitude: journey.destination.latitude, longitude: journey.destination.longitude };
     }
-    return routeCoordinates[routeCoordinates.length - 1] || { latitude: 14.6565, longitude: 121.0288 };
+    return (
+      routeCoordinates[routeCoordinates.length - 1] || { latitude: 14.6565, longitude: 121.0288 }
+    );
   }, [journey, routeCoordinates]);
 
   const polylines: MapPolylineItem[] = React.useMemo(() => {
@@ -130,8 +130,10 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
           });
         }
         if (segCoords.length === 0) {
-          if (seg.fromStop) segCoords.push({ latitude: seg.fromStop.latitude, longitude: seg.fromStop.longitude });
-          if (seg.toStop) segCoords.push({ latitude: seg.toStop.latitude, longitude: seg.toStop.longitude });
+          if (seg.fromStop)
+            segCoords.push({ latitude: seg.fromStop.latitude, longitude: seg.fromStop.longitude });
+          if (seg.toStop)
+            segCoords.push({ latitude: seg.toStop.latitude, longitude: seg.toStop.longitude });
         }
 
         const isWalk = seg.type === 'walking' || seg.mode === 'walking';
@@ -163,7 +165,7 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
             { latitude: 14.6532, longitude: 121.0612 },
             { latitude: 14.6542, longitude: 121.0535 },
             { latitude: 14.6515, longitude: 121.0488 },
-            { latitude: 14.6536, longitude: 121.0410 },
+            { latitude: 14.6536, longitude: 121.041 },
             { latitude: 14.6558, longitude: 121.0332 },
             { latitude: 14.6565, longitude: 121.0288 },
           ];
@@ -259,9 +261,7 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
                       {seg.mode === 'walking' ? '' : seg.mode.toUpperCase()}
                     </Text>
                   </View>
-                  {idx < journey.segments.length - 1 && (
-                    <Text style={styles.modeArrow}>›</Text>
-                  )}
+                  {idx < journey.segments.length - 1 && <Text style={styles.modeArrow}>›</Text>}
                 </React.Fragment>
               ))
             ) : (

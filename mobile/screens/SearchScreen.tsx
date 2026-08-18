@@ -232,6 +232,51 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           </View>
         )}
 
+        {/* 1b. Saved Places Section (Shown when query is empty) */}
+        {!searchQuery.trim() && savedPlaces.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SAVED PLACES</Text>
+            {savedPlaces.map((place) => {
+              const icon =
+                place.category === 'home'
+                  ? '🏠'
+                  : place.category === 'work'
+                    ? '💼'
+                    : place.category === 'school'
+                      ? '🎓'
+                      : '⭐';
+              return (
+                <TouchableOpacity
+                  key={`saved-${place.id}`}
+                  style={[styles.resultItem, shadows.subtle]}
+                  onPress={() =>
+                    handleSelectLocation({
+                      id: place.id,
+                      name: place.name,
+                      subtitle: place.subtitle || 'Saved Location',
+                      latitude: place.latitude,
+                      longitude: place.longitude,
+                      type: place.type || 'place',
+                    })
+                  }
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.iconCircle}>
+                    <Text style={styles.iconText}>{icon}</Text>
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{place.name}</Text>
+                    <Text style={styles.itemSubtitle} numberOfLines={1}>
+                      {place.subtitle || `${place.category.toUpperCase()} • Saved Location`}
+                    </Text>
+                  </View>
+                  <Text style={styles.selectArrow}>→</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         {/* 2. Categorized Places & Landmarks */}
         {placeResults.length > 0 && (
           <View style={styles.section}>

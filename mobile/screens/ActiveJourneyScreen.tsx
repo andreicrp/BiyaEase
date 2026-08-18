@@ -106,7 +106,11 @@ export const ActiveJourneyScreen: React.FC<ActiveJourneyScreenProps> = ({ onExit
         longitude: activeJourney.destination.longitude,
       },
     ],
-    [activeJourney.destination.latitude, activeJourney.destination.longitude, activeJourney.destination.name]
+    [
+      activeJourney.destination.latitude,
+      activeJourney.destination.longitude,
+      activeJourney.destination.name,
+    ]
   );
 
   const handleStepAction = () => {

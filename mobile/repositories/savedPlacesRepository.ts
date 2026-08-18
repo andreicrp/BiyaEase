@@ -1,8 +1,4 @@
-import {
-  SavedPlace,
-  SavedPlaceCategory,
-  SavedPlacesRepository,
-} from '../types/savedData.types';
+import { SavedPlace, SavedPlaceCategory, SavedPlacesRepository } from '../types/savedData.types';
 import { localStorageService } from '../services/localStorageService';
 import { calculateDistanceMeters } from '../utils/geoUtils';
 
@@ -104,9 +100,7 @@ export class LocalSavedPlacesRepository implements SavedPlacesRepository {
 
     // 4. Home / Work Uniqueness Check
     if (category === 'home' || category === 'work') {
-      const existingSpecial = places.find(
-        (p) => p.category === category && p.id !== placeInput.id
-      );
+      const existingSpecial = places.find((p) => p.category === category && p.id !== placeInput.id);
 
       if (existingSpecial) {
         if (!options?.forceReplaceCategory) {

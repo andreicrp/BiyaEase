@@ -58,7 +58,13 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ alert }) => {
   const config = getBannerConfig();
 
   return (
-    <View style={[styles.container, { backgroundColor: config.bg, borderColor: config.border }, shadows.floating]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: config.bg, borderColor: config.border },
+        shadows.floating,
+      ]}
+    >
       <Text style={styles.icon}>{config.icon}</Text>
       <View style={styles.content}>
         <Text style={[styles.title, { color: config.titleColor }]}>{alert.title}</Text>

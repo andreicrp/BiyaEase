@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, StatusBar } from 'react-native';
 import { colors } from '../constants/colors';
 import { MainTabType, BottomNavigation } from '../components/navigation/BottomNavigation';
-import { JourneyProvider, useJourney } from '../context/JourneyContext';
+import { useJourney } from '../context/JourneyContext';
 
 // Screens
 import { SplashScreen } from '../screens/SplashScreen';
@@ -54,7 +54,8 @@ function MainApp(): React.JSX.Element {
   >('SM North EDSA');
   const [selectedRoute, setSelectedRoute] = useState<Journey | RouteOption>(mockRouteOptions[0]!);
 
-  const activeOriginName = typeof selectedOrigin === 'string' ? selectedOrigin : selectedOrigin.name;
+  const activeOriginName =
+    typeof selectedOrigin === 'string' ? selectedOrigin : selectedOrigin.name;
 
   // Navigation handlers
   const handleSplashFinish = (): void => {
@@ -105,7 +106,7 @@ function MainApp(): React.JSX.Element {
     setFlowState('route_options');
   };
 
-  const handleSelectSavedRoute = (savedRoute: SavedRoute): void => {
+  const _handleSelectSavedRoute = (savedRoute: SavedRoute): void => {
     setSelectedDestination(savedRoute.destination);
     setFlowState('route_options');
   };

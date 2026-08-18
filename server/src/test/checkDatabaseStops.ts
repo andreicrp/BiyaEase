@@ -35,7 +35,6 @@ async function main() {
     `);
     console.log('\n--- 10 CLOSEST STOPS TO UP DILIMAN ---');
     console.table(metroManilaStops.rows);
-
   } finally {
     client.release();
     process.exit(0);

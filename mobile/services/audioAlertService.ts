@@ -1,9 +1,4 @@
-export type SoundEffectType =
-  | 'boarding'
-  | 'alighting'
-  | 'transfer'
-  | 'arrival'
-  | 'offroute';
+export type SoundEffectType = 'boarding' | 'alighting' | 'transfer' | 'arrival' | 'offroute';
 
 export class AudioAlertService {
   private isEnabled = true;
@@ -26,7 +21,9 @@ export class AudioAlertService {
     try {
       // In web/browser environments with Web Audio API available
       if (typeof window !== 'undefined' && 'AudioContext' in window) {
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         if (AudioCtx) {
           const ctx = new AudioCtx();
           const osc = ctx.createOscillator();

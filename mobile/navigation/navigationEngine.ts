@@ -1,9 +1,5 @@
 import { Coordinates, calculateHaversineDistance } from '../utils/geoUtils';
-import {
-  NavigationContextUpdate,
-  NavigationState,
-  NavigationStatus,
-} from './navigationTypes';
+import { NavigationContextUpdate, NavigationState, NavigationStatus } from './navigationTypes';
 import { navigationMatcher } from './navigationMatcher';
 import { nextStopTracker } from './nextStopTracker';
 import { offRouteDetector } from './offRouteDetector';
@@ -47,10 +43,7 @@ export class NavigationEngine {
     const stepPolyline =
       polylineCoordinates && polylineCoordinates.length > 0
         ? polylineCoordinates
-        : [
-            { latitude: userLocation.latitude, longitude: userLocation.longitude },
-            targetCoord,
-          ];
+        : [{ latitude: userLocation.latitude, longitude: userLocation.longitude }, targetCoord];
 
     const matchedProgress = navigationMatcher.matchLocationToPolyline(
       userLocation,

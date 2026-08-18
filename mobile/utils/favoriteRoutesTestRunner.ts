@@ -47,7 +47,12 @@ async function runTests() {
     id: 'fr-up-smnorth',
     name: 'Home to SM North',
     origin: { id: 'orig-up', name: 'UP Diliman', latitude: 14.6538, longitude: 121.0685 },
-    destination: { id: 'dest-smnorth', name: 'SM North EDSA', latitude: 14.6565, longitude: 121.0288 },
+    destination: {
+      id: 'dest-smnorth',
+      name: 'SM North EDSA',
+      latitude: 14.6565,
+      longitude: 121.0288,
+    },
     modeSummary: ['JEEPNEY', 'MRT'],
     routeSummary: 'UP Diliman ➔ SM North EDSA via North Ave',
     estimatedDurationMinutes: 35,
@@ -64,7 +69,12 @@ async function runTests() {
     id: 'fr-up-smnorth-dup',
     name: 'Different Name Same Path',
     origin: { id: 'orig-up', name: 'UP Diliman Campus', latitude: 14.6539, longitude: 121.0686 }, // within 20m
-    destination: { id: 'dest-smnorth', name: 'SM North Mall', latitude: 14.6566, longitude: 121.0289 }, // within 20m
+    destination: {
+      id: 'dest-smnorth',
+      name: 'SM North Mall',
+      latitude: 14.6566,
+      longitude: 121.0289,
+    }, // within 20m
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });

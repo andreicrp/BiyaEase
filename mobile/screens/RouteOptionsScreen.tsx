@@ -18,7 +18,11 @@ import { Journey, JourneyMode, RouteRecommendation } from '../types/routing.type
 import { routingApiService } from '../services/routingApiService';
 
 interface RouteOptionsScreenProps {
-  origin?: Destination | SelectedLocation | string | { latitude: number; longitude: number; name?: string };
+  origin?:
+    | Destination
+    | SelectedLocation
+    | string
+    | { latitude: number; longitude: number; name?: string };
   destination: Destination | SelectedLocation | string;
   onBack: () => void;
   onSelectRoute: (journey: Journey) => void;
@@ -57,9 +61,9 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
   destination,
   onBack,
   onSelectRoute,
-  onEditOrigin,
+  onEditOrigin: _onEditOrigin,
 }) => {
-  const { favoriteRoutes, saveRoute } = useSavedData();
+  const { favoriteRoutes: _favoriteRoutes, saveRoute } = useSavedData();
   const [saveModalJourney, setSaveModalJourney] = useState<Journey | null>(null);
   const [customRouteName, setCustomRouteName] = useState<string>('');
 
@@ -154,7 +158,10 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     });
 
     if (res.success) {
-      Alert.alert('Route Saved! ⭐', `"${customRouteName}" has been saved to your Favorite Routes.`);
+      Alert.alert(
+        'Route Saved! ⭐',
+        `"${customRouteName}" has been saved to your Favorite Routes.`
+      );
       setSaveModalJourney(null);
     } else {
       Alert.alert('Error', res.error || 'Failed to save route');
@@ -486,7 +493,12 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
       )}
 
       {/* Save Route Modal */}
-      <RNModal visible={!!saveModalJourney} transparent animationType="slide" onRequestClose={() => setSaveModalJourney(null)}>
+      <RNModal
+        visible={!!saveModalJourney}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSaveModalJourney(null)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.dialogModalContainer}>
             <Text style={styles.dialogTitle}>Save Favorite Route ⭐</Text>
@@ -503,7 +515,10 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
             />
 
             <View style={styles.dialogActions}>
-              <RNTouchableOpacity style={styles.cancelBtn} onPress={() => setSaveModalJourney(null)}>
+              <RNTouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setSaveModalJourney(null)}
+              >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </RNTouchableOpacity>
               <RNTouchableOpacity style={styles.saveBtn} onPress={handleConfirmSaveRoute}>

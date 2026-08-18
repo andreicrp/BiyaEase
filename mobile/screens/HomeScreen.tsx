@@ -26,7 +26,7 @@ import {
   mockSavedPlaces,
   mockUserProfile,
 } from '../data/mockData';
-import { Destination, SavedPlace as LegacySavedPlace, RecentTrip } from '../types/index';
+import { Destination, RecentTrip } from '../types/index';
 import { locationService } from '../services/locationService';
 
 interface HomeScreenProps {
@@ -53,10 +53,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenNearby,
   onOpenProfile,
   onOpenActiveJourney,
-  onLaunchFavoriteRoute,
+  onLaunchFavoriteRoute: _onLaunchFavoriteRoute,
 }) => {
   const { activeJourney, discardActiveJourney } = useJourney();
-  const { savedPlaces, favoriteRoutes, launchFavoriteRoute } = useSavedData();
+  const { savedPlaces } = useSavedData();
 
   const [nearbyStops, setNearbyStops] = useState<ApiTransitStop[]>([]);
   const [places, setPlaces] = useState<ApiPlace[]>([]);
@@ -64,10 +64,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
 
-  const originName = currentOriginName || locationService.getLocationName() || 'UP Diliman, Quezon City';
+  const originName =
+    currentOriginName || locationService.getLocationName() || 'UP Diliman, Quezon City';
 
-  const homePlace = savedPlaces.find((p) => p.category === 'home');
-  const workPlace = savedPlaces.find((p) => p.category === 'work');
   const displayQuickPlaces = savedPlaces.length > 0 ? savedPlaces.slice(0, 3) : mockSavedPlaces;
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>(() => {
@@ -100,7 +99,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           setNearbyStops(stopsData);
           setPlaces(placesData.slice(0, 4));
         }
-      } catch (err) {
+      } catch (_err) {
         // Quiet non-blocking log for offline/fallback mode
         console.log('[Home] Map backend fallback active');
       } finally {
@@ -217,7 +216,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <View style={styles.quickDestGrid}>
             {displayQuickPlaces.map((place: any) => {
               const cat = place.category || place.type;
-              const icon = cat === 'home' ? '🏠' : cat === 'work' ? '💼' : cat === 'school' ? '🎓' : '⭐';
+              const icon =
+                cat === 'home' ? '🏠' : cat === 'work' ? '💼' : cat === 'school' ? '🎓' : '⭐';
               return (
                 <TouchableOpacity
                   key={place.id}

@@ -37,7 +37,8 @@ export class NextStopTracker {
         : `Stop ${totalStops - stopsRemaining + 1} of ${totalStops}`;
 
     // Estimated distance to next intermediate stop
-    const distToNext = stopsRemaining <= 1 ? distToAlight : Math.round(distToAlight / stopsRemaining);
+    const distToNext =
+      stopsRemaining <= 1 ? distToAlight : Math.round(distToAlight / stopsRemaining);
 
     return {
       currentStopName,

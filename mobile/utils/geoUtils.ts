@@ -140,7 +140,7 @@ export const METRO_MANILA_CORRIDOR_NETWORKS: Coordinates[] = [
   { latitude: 14.6532, longitude: 121.0612 }, // 1. University Ave / C.P. Garcia
   { latitude: 14.6542, longitude: 121.0535 }, // 2. Philcoa Footbridge / Commonwealth
   { latitude: 14.6515, longitude: 121.0488 }, // 3. Quezon Memorial Circle / Elliptical Rd
-  { latitude: 14.6536, longitude: 121.0410 }, // 4. North Ave / Veterans Memorial Hospital
+  { latitude: 14.6536, longitude: 121.041 }, // 4. North Ave / Veterans Memorial Hospital
   { latitude: 14.6558, longitude: 121.0332 }, // 5. North Ave / Trinoma Entrance
   { latitude: 14.6565, longitude: 121.0288 }, // 6. SM North EDSA Main Terminal
 
@@ -157,7 +157,7 @@ export const METRO_MANILA_CORRIDOR_NETWORKS: Coordinates[] = [
   { latitude: 14.6085, longitude: 120.9912 }, // 14. UST / España Blvd
 
   // Aurora Blvd / Katipunan LRT-2 Spine
-  { latitude: 14.6318, longitude: 121.0740 }, // 15. Katipunan LRT-2 Station
+  { latitude: 14.6318, longitude: 121.074 }, // 15. Katipunan LRT-2 Station
 ];
 
 /**

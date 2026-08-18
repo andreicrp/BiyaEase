@@ -1,10 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import {
-  ActiveJourney,
-  JourneyStatus,
-  JourneyStep,
-  UserLocation,
-} from '../types/journey.types';
+import { ActiveJourney, JourneyStatus, JourneyStep, UserLocation } from '../types/journey.types';
 import { RouteOption } from '../types/index';
 import { Journey } from '../types/routing.types';
 import { journeyAdapter } from '../services/journeyAdapter';
@@ -204,10 +199,7 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       journeyStatus !== 'cancelled'
     ) {
       setIsTracking(true);
-      locationService.startWatching(
-        handleLocationUpdate,
-        (err) => setGpsError(err)
-      );
+      locationService.startWatching(handleLocationUpdate, (err) => setGpsError(err));
     } else {
       setIsTracking(false);
       locationService.stopWatching();

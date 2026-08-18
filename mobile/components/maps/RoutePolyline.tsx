@@ -61,7 +61,9 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
 
   const points = coordinates
     .map(projectPoint)
-    .filter((pt) => typeof pt.x === 'number' && typeof pt.y === 'number' && !isNaN(pt.x) && !isNaN(pt.y));
+    .filter(
+      (pt) => typeof pt.x === 'number' && typeof pt.y === 'number' && !isNaN(pt.x) && !isNaN(pt.y)
+    );
 
   if (points.length < 2) return null;
 

@@ -147,7 +147,7 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
         if (isMounted) {
           setStops(data);
         }
-      } catch (err) {
+      } catch (_err) {
         // Quiet non-blocking log for offline/fallback mode
         console.log('[Nearby] Map backend fallback active');
       } finally {
@@ -238,9 +238,13 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
 
           {/* Input Labels */}
           <RNView style={styles.searchInputsCol}>
-            <TouchableOpacity style={styles.searchRowItem} onPress={onOpenOriginSearch || onOpenSearch}>
+            <TouchableOpacity
+              style={styles.searchRowItem}
+              onPress={onOpenOriginSearch || onOpenSearch}
+            >
               <RNText style={styles.originText} numberOfLines={1}>
-                📍 {originName || locationService.getLocationName() || 'UP Diliman, Quezon City'} (✏️ Edit)
+                📍 {originName || locationService.getLocationName() || 'UP Diliman, Quezon City'}{' '}
+                (✏️ Edit)
               </RNText>
             </TouchableOpacity>
             <RNView style={styles.searchDivider} />
@@ -299,7 +303,9 @@ export const NearbyScreen: React.FC<NearbyScreenProps> = ({
 
           <RNView style={styles.sheetHeaderRow}>
             <RNView style={styles.sheetTitleGroup}>
-              <RNText style={styles.sheetTitle}>🚏 Nearby Transit ({mappedNearbyList.length})</RNText>
+              <RNText style={styles.sheetTitle}>
+                🚏 Nearby Transit ({mappedNearbyList.length})
+              </RNText>
               <RNText style={styles.sheetSubtitle}>
                 {currentSheetState === 'collapsed'
                   ? '↕️ Swipe up to browse transit stops'

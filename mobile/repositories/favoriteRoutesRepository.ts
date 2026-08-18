@@ -1,7 +1,4 @@
-import {
-  FavoriteRoute,
-  FavoriteRoutesRepository,
-} from '../types/savedData.types';
+import { FavoriteRoute, FavoriteRoutesRepository } from '../types/savedData.types';
 import { localStorageService } from '../services/localStorageService';
 import { calculateDistanceMeters } from '../utils/geoUtils';
 
@@ -46,7 +43,9 @@ export class LocalFavoriteRoutesRepository implements FavoriteRoutesRepository {
     return routes.find((r) => r.id === id) || null;
   }
 
-  async save(routeInput: FavoriteRoute): Promise<{ success: boolean; route?: FavoriteRoute; error?: string }> {
+  async save(
+    routeInput: FavoriteRoute
+  ): Promise<{ success: boolean; route?: FavoriteRoute; error?: string }> {
     // 1. Validation
     if (!routeInput.name || routeInput.name.trim().length === 0) {
       return { success: false, error: 'Favorite route name cannot be empty' };
@@ -122,7 +121,8 @@ export class LocalFavoriteRoutesRepository implements FavoriteRoutesRepository {
       },
       journeyId: routeInput.journeyId,
       modeSummary: routeInput.modeSummary || [],
-      routeSummary: routeInput.routeSummary || `${routeInput.origin.name} ➔ ${routeInput.destination.name}`,
+      routeSummary:
+        routeInput.routeSummary || `${routeInput.origin.name} ➔ ${routeInput.destination.name}`,
       estimatedDurationMinutes: routeInput.estimatedDurationMinutes,
       estimatedFare: routeInput.estimatedFare,
       lastUsedAt: routeInput.lastUsedAt || now,

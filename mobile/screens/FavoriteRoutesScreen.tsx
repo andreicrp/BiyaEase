@@ -23,13 +23,14 @@ const RNModal = Modal as any;
 const RNTextInput = TextInput as any;
 
 interface FavoriteRoutesScreenProps {
-  onLaunchRoute?: (locations: { origin: SavedLocationReference; destination: SavedLocationReference }) => void;
+  onLaunchRoute?: (locations: {
+    origin: SavedLocationReference;
+    destination: SavedLocationReference;
+  }) => void;
   onBack?: () => void;
 }
 
-export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
-  onLaunchRoute,
-}) => {
+export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({ onLaunchRoute }) => {
   const { favoriteRoutes, updateRoute, deleteRoute, launchFavoriteRoute } = useSavedData();
 
   const [activeRoute, setActiveRoute] = useState<FavoriteRoute | null>(null);
@@ -104,7 +105,8 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
             <RNText style={styles.emptyIcon}>⭐</RNText>
             <RNText style={styles.emptyTitle}>No Favorite Routes Saved</RNText>
             <RNText style={styles.emptySubtitle}>
-              Save your daily commutes (e.g. Home ➔ Work, School ➔ Cubao) from Route Options for 1-tap route calculation.
+              Save your daily commutes (e.g. Home ➔ Work, School ➔ Cubao) from Route Options for
+              1-tap route calculation.
             </RNText>
           </RNView>
         ) : (
@@ -136,15 +138,15 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
               <RNView style={styles.metaRow}>
                 {route.modeSummary && route.modeSummary.length > 0 && (
                   <RNView style={styles.modeBadgeContainer}>
-                    <RNText style={styles.modeBadgeText}>
-                      {route.modeSummary.join(' › ')}
-                    </RNText>
+                    <RNText style={styles.modeBadgeText}>{route.modeSummary.join(' › ')}</RNText>
                   </RNView>
                 )}
 
                 {route.estimatedDurationMinutes && (
                   <RNView style={styles.metricBadge}>
-                    <RNText style={styles.metricBadgeText}>⏱ {route.estimatedDurationMinutes}m</RNText>
+                    <RNText style={styles.metricBadgeText}>
+                      ⏱ {route.estimatedDurationMinutes}m
+                    </RNText>
                   </RNView>
                 )}
 
@@ -164,8 +166,17 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
       </ScrollView>
 
       {/* Action Modal */}
-      <RNModal visible={showActionModal} transparent animationType="fade" onRequestClose={() => setShowActionModal(false)}>
-        <RNTouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowActionModal(false)}>
+      <RNModal
+        visible={showActionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionModal(false)}
+      >
+        <RNTouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionModal(false)}
+        >
           <RNView style={styles.actionModalContainer}>
             <RNText style={styles.actionModalTitle}>{activeRoute?.name}</RNText>
             <RNText style={styles.actionModalSub}>
@@ -182,16 +193,26 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
               <RNText style={styles.actionOptionText}>Rename Favorite Route</RNText>
             </RNTouchableOpacity>
 
-            <RNTouchableOpacity style={[styles.actionOptionBtn, styles.deleteOptionBtn]} onPress={handleOpenDelete}>
+            <RNTouchableOpacity
+              style={[styles.actionOptionBtn, styles.deleteOptionBtn]}
+              onPress={handleOpenDelete}
+            >
               <RNText style={styles.actionOptionIcon}>🗑️</RNText>
-              <RNText style={[styles.actionOptionText, styles.deleteOptionText]}>Delete Favorite Route</RNText>
+              <RNText style={[styles.actionOptionText, styles.deleteOptionText]}>
+                Delete Favorite Route
+              </RNText>
             </RNTouchableOpacity>
           </RNView>
         </RNTouchableOpacity>
       </RNModal>
 
       {/* Rename Modal */}
-      <RNModal visible={showRenameModal} transparent animationType="slide" onRequestClose={() => setShowRenameModal(false)}>
+      <RNModal
+        visible={showRenameModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRenameModal(false)}
+      >
         <RNView style={styles.modalOverlay}>
           <RNView style={styles.dialogModalContainer}>
             <RNText style={styles.dialogTitle}>Rename Favorite Route</RNText>
@@ -205,7 +226,10 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
             />
 
             <RNView style={styles.dialogActions}>
-              <RNTouchableOpacity style={styles.cancelBtn} onPress={() => setShowRenameModal(false)}>
+              <RNTouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowRenameModal(false)}
+              >
                 <RNText style={styles.cancelBtnText}>Cancel</RNText>
               </RNTouchableOpacity>
               <RNTouchableOpacity style={styles.saveBtn} onPress={handleSaveRename}>
@@ -217,7 +241,12 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
       </RNModal>
 
       {/* Delete Confirmation Modal */}
-      <RNModal visible={showDeleteConfirmModal} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirmModal(false)}>
+      <RNModal
+        visible={showDeleteConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirmModal(false)}
+      >
         <RNView style={styles.modalOverlay}>
           <RNView style={styles.dialogModalContainer}>
             <RNText style={styles.dialogTitle}>Remove Favorite Route?</RNText>
@@ -226,7 +255,10 @@ export const FavoriteRoutesScreen: React.FC<FavoriteRoutesScreenProps> = ({
             </RNText>
 
             <RNView style={styles.dialogActions}>
-              <RNTouchableOpacity style={styles.cancelBtn} onPress={() => setShowDeleteConfirmModal(false)}>
+              <RNTouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowDeleteConfirmModal(false)}
+              >
                 <RNText style={styles.cancelBtnText}>Cancel</RNText>
               </RNTouchableOpacity>
               <RNTouchableOpacity style={styles.deleteConfirmBtn} onPress={handleConfirmDelete}>

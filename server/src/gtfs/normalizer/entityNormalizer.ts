@@ -33,8 +33,7 @@ export class EntityNormalizer {
     const extId = raw.agency_id?.trim() || raw.agency_name.trim();
     const id = `agency-${this.generateHash(`${this.sourceId}:${extId}`)}`;
     const rawCode =
-      raw.agency_id?.trim() ||
-      raw.agency_name.substring(0, 10).toUpperCase().replace(/\s+/g, '_');
+      raw.agency_id?.trim() || raw.agency_name.substring(0, 10).toUpperCase().replace(/\s+/g, '_');
 
     return {
       id,
@@ -55,7 +54,10 @@ export class EntityNormalizer {
     const id = `route-${this.generateHash(`${this.sourceId}:${extId}`)}`;
     // Fall back to extId if route_short_name is missing (do NOT fallback to 100+ char route_long_name for code)
     const code = (raw.route_short_name?.trim() || extId).substring(0, 64);
-    const name = (raw.route_long_name?.trim() || raw.route_short_name?.trim() || extId).substring(0, 255);
+    const name = (raw.route_long_name?.trim() || raw.route_short_name?.trim() || extId).substring(
+      0,
+      255
+    );
     const modeId = this.modeMapper.resolveMode(raw.route_type, `${code} ${name}`);
 
     return {
@@ -68,7 +70,9 @@ export class EntityNormalizer {
       code,
       name,
       description: raw.route_desc?.trim() || null,
-      route_color: raw.route_color ? `#${raw.route_color.replace('#', '')}`.substring(0, 16) : '#0F766E',
+      route_color: raw.route_color
+        ? `#${raw.route_color.replace('#', '')}`.substring(0, 16)
+        : '#0F766E',
       is_active: true,
       source: 'gtfs',
     };

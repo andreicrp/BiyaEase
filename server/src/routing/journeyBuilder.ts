@@ -26,7 +26,7 @@ const METRO_MANILA_CORRIDOR_WAYPOINTS_LNGLAT: [number, number][] = [
   [121.0612, 14.6532], // University Ave / C.P. Garcia
   [121.0535, 14.6542], // Philcoa Overpass / Commonwealth
   [121.0488, 14.6515], // Quezon Memorial Circle / Elliptical Rd
-  [121.0410, 14.6536], // North Ave / Veterans Memorial Hospital
+  [121.041, 14.6536], // North Ave / Veterans Memorial Hospital
   [121.0332, 14.6558], // North Ave / Trinoma Entrance
   [121.0288, 14.6565], // SM North EDSA Main Terminal
   [121.0384, 14.6425], // EDSA / Quezon Ave Interchange
@@ -36,7 +36,7 @@ const METRO_MANILA_CORRIDOR_WAYPOINTS_LNGLAT: [number, number][] = [
   [121.0532, 14.6185], // Araneta City / Farmers Plaza
   [121.0185, 14.6325], // Quezon Ave / Fisher Mall
   [120.9912, 14.6085], // UST / España Blvd
-  [121.0740, 14.6318], // Katipunan LRT-2 Station
+  [121.074, 14.6318], // Katipunan LRT-2 Station
 ];
 
 function calculateHaversineDistance(

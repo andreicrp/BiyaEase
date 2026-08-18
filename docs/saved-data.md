@@ -40,13 +40,9 @@ All saved entities are persisted locally on the commuter's device using versione
 ## 3. Data Models
 
 ### Saved Place (`SavedPlace`)
+
 ```typescript
-export type SavedPlaceCategory =
-  | 'home'
-  | 'work'
-  | 'school'
-  | 'favorite'
-  | 'other';
+export type SavedPlaceCategory = 'home' | 'work' | 'school' | 'favorite' | 'other';
 
 export interface SavedPlace {
   id: string;
@@ -62,6 +58,7 @@ export interface SavedPlace {
 ```
 
 ### Favorite Route (`FavoriteRoute`)
+
 ```typescript
 export interface SavedLocationReference {
   id: string;
@@ -97,7 +94,9 @@ export interface FavoriteRoute {
 - **Favorite Routes Key**: `biyaease.favoriteRoutes.v1`
 
 ### Resilience & Error Recovery
+
 If local storage becomes corrupted or unreadable:
+
 1. `localStorageService` catches JSON syntax errors gracefully.
 2. Returns clean fallback arrays `[]`.
 3. Never crashes the application or interrupts active navigation.
@@ -117,10 +116,12 @@ If local storage becomes corrupted or unreadable:
 ## 6. Deduplication & Uniqueness Constraints
 
 ### Deduplication
+
 - **Saved Places**: An entry is flagged as a duplicate if it matches an existing saved place with the **same normalized name** (`name.trim().toLowerCase()`) AND coordinates within **30 meters** (Haversine distance).
 - **Favorite Routes**: Primary duplicate key evaluates both **origin coordinates** AND **destination coordinates** within 30m.
 
 ### Home & Work Uniqueness
+
 - **Home**: Maximum 1 location category.
 - **Work**: Maximum 1 location category.
 - If a commuter attempts to save a new place as Home (or Work), the system prompts for explicit replacement confirmation before downgrading the previous entry to `'favorite'`.
@@ -132,6 +133,7 @@ If local storage becomes corrupted or unreadable:
 The UI components consume data exclusively via `SavedDataContext` and abstract repository interfaces (`SavedPlacesRepository`, `FavoriteRoutesRepository`).
 
 When Phase 11 introduces authentication and user accounts:
+
 1. Create `RemoteSavedPlacesRepository` implementing `SavedPlacesRepository`.
 2. Inject `RemoteSavedPlacesRepository` into `SavedDataProvider`.
 3. Zero changes required in `SavedPlacesScreen`, `FavoriteRoutesScreen`, `HomeScreen`, or `SearchScreen`.

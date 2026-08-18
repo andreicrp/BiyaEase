@@ -115,9 +115,9 @@ async function runRouteOptionsTests() {
   assert(
     Boolean(
       bestMulti.recommendations?.includes('fastest') &&
-        bestMulti.recommendations?.includes('cheapest') &&
-        bestMulti.recommendations?.includes('least_walking') &&
-        bestMulti.recommendations?.includes('fewest_transfers')
+      bestMulti.recommendations?.includes('cheapest') &&
+      bestMulti.recommendations?.includes('least_walking') &&
+      bestMulti.recommendations?.includes('fewest_transfers')
     ),
     'Assigns multiple recommendation badges (fastest, cheapest, least_walking) when a single route qualifies'
   );
@@ -148,9 +148,9 @@ async function runRouteOptionsTests() {
   assert(
     Boolean(
       j5.routeCodes &&
-        j5.routeCodes.length === 2 &&
-        j5.routeCodes[0] === 'JEEP-05' &&
-        j5.routeCodes[1] === 'BUS-EDSA'
+      j5.routeCodes.length === 2 &&
+      j5.routeCodes[0] === 'JEEP-05' &&
+      j5.routeCodes[1] === 'BUS-EDSA'
     ),
     'Extracts route codes correctly for multi-segment journeys'
   );

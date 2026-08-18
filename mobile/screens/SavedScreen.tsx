@@ -16,7 +16,10 @@ const RNTouchableOpacity = TouchableOpacity as any;
 interface SavedScreenProps {
   onSelectAsOrigin?: (location: SelectedLocation) => void;
   onSelectAsDestination?: (location: SelectedLocation) => void;
-  onLaunchFavoriteRoute?: (locations: { origin: SavedLocationReference; destination: SavedLocationReference }) => void;
+  onLaunchFavoriteRoute?: (locations: {
+    origin: SavedLocationReference;
+    destination: SavedLocationReference;
+  }) => void;
 }
 
 export const SavedScreen: React.FC<SavedScreenProps> = ({
@@ -35,7 +38,9 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
           onPress={() => setActiveTab('places')}
           accessibilityLabel="View Saved Places"
         >
-          <RNText style={[styles.tabButtonText, activeTab === 'places' && styles.tabButtonTextActive]}>
+          <RNText
+            style={[styles.tabButtonText, activeTab === 'places' && styles.tabButtonTextActive]}
+          >
             📍 Saved Places
           </RNText>
         </RNTouchableOpacity>
@@ -45,7 +50,9 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
           onPress={() => setActiveTab('routes')}
           accessibilityLabel="View Favorite Routes"
         >
-          <RNText style={[styles.tabButtonText, activeTab === 'routes' && styles.tabButtonTextActive]}>
+          <RNText
+            style={[styles.tabButtonText, activeTab === 'routes' && styles.tabButtonTextActive]}
+          >
             ⭐ Favorite Routes
           </RNText>
         </RNTouchableOpacity>

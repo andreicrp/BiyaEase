@@ -272,7 +272,7 @@ export const mockRouteOptions: RouteOption[] = [
         vehicleNumber: 'Route 18',
         originStop: 'Philcoa Footbridge',
         destinationStop: 'SM North EDSA Main Terminal',
-        coordinates: { latitude: 14.6536, longitude: 121.0410 },
+        coordinates: { latitude: 14.6536, longitude: 121.041 },
         stopsCount: 3,
         landmarkHint: 'Alight right at SM North EDSA Bay 2',
         instructions: 'Board Project 6/SM North jeep and alight at SM North.',
@@ -434,7 +434,7 @@ export const mockRouteOptions: RouteOption[] = [
         fare: 20,
         originStop: 'Philcoa Bus Stop',
         destinationStop: 'SM North EDSA Stop',
-        coordinates: { latitude: 14.6536, longitude: 121.0410 },
+        coordinates: { latitude: 14.6536, longitude: 121.041 },
         instructions: 'Alight directly at North Avenue bus stop.',
       },
       {

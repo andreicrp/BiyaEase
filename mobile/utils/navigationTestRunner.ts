@@ -26,7 +26,7 @@ console.log('\n🧭 RUNNING BIYAEASE LIVE NAVIGATION & REAL-TIME ALERTS TESTS...
 // ----------------------------------------------------
 const routePolyline: Coordinates[] = [
   { latitude: 14.6538, longitude: 121.0685 }, // UP Diliman
-  { latitude: 14.6525, longitude: 121.0600 }, // Midpoint
+  { latitude: 14.6525, longitude: 121.06 }, // Midpoint
   { latitude: 14.6536, longitude: 121.0531 }, // Philcoa
 ];
 
@@ -41,10 +41,13 @@ const match2 = navigationMatcher.matchLocationToPolyline(nearPhilcoaLoc, routePo
 assert(match2.progressPercent >= 90, 'Computes >90% progress near destination of route');
 assert(match2.remainingDistanceMeters <= 50, 'Calculates <=50m remaining distance near end');
 
-const farOffLoc: Coordinates = { latitude: 14.7000, longitude: 121.1000 };
+const farOffLoc: Coordinates = { latitude: 14.7, longitude: 121.1 };
 const match3 = navigationMatcher.matchLocationToPolyline(farOffLoc, routePolyline, 250);
 assert(!match3.isNearRoute, 'Flags location far from route corridor as not near route');
-assert(match3.distanceFromRouteMeters > 500, 'Calculates >500m cross-track distance for off-route coordinate');
+assert(
+  match3.distanceFromRouteMeters > 500,
+  'Calculates >500m cross-track distance for off-route coordinate'
+);
 
 // ----------------------------------------------------
 // 2. Next Stop Tracker Tests
@@ -65,17 +68,20 @@ const transitStep: JourneyStep = {
 };
 
 const userInTransitEarly: UserLocation = {
-  latitude: 14.6530,
-  longitude: 121.0640,
+  latitude: 14.653,
+  longitude: 121.064,
   timestamp: new Date().toISOString(),
 };
 const stopInfo1 = nextStopTracker.trackNextStop(userInTransitEarly, transitStep);
 assert(stopInfo1.stopsRemaining >= 2, 'In-transit tracker estimates remaining stops along route');
-assert(!stopInfo1.isApproachingAlight, 'Does not flag approaching alight when far from alight stop');
+assert(
+  !stopInfo1.isApproachingAlight,
+  'Does not flag approaching alight when far from alight stop'
+);
 
 const userNearAlight: UserLocation = {
   latitude: 14.6536,
-  longitude: 121.0540,
+  longitude: 121.054,
   timestamp: new Date().toISOString(),
 };
 const stopInfo2 = nextStopTracker.trackNextStop(userNearAlight, transitStep);
@@ -90,22 +96,25 @@ const targetStop: Coordinates = { latitude: 14.6538, longitude: 121.0685 };
 
 // Single reading off corridor should NOT trigger off-route immediately (3-strike rule)
 const reading1 = offRouteDetector.evaluateLocation(
-  { latitude: 14.6600, longitude: 121.0800, timestamp: '' },
+  { latitude: 14.66, longitude: 121.08, timestamp: '' },
   targetStop,
   450
 );
-assert(!reading1.isOffRoute, '1st off-corridor reading does not immediately trigger off-route (3-strike rule)');
+assert(
+  !reading1.isOffRoute,
+  '1st off-corridor reading does not immediately trigger off-route (3-strike rule)'
+);
 assert(reading1.consecutiveOffRouteReadings === 1, 'Increments consecutive off-route counter to 1');
 
 // 2nd reading off corridor
 offRouteDetector.evaluateLocation(
-  { latitude: 14.6610, longitude: 121.0810, timestamp: '' },
+  { latitude: 14.661, longitude: 121.081, timestamp: '' },
   targetStop,
   460
 );
 // 3rd reading off corridor triggers off-route
 const reading3 = offRouteDetector.evaluateLocation(
-  { latitude: 14.6620, longitude: 121.0820, timestamp: '' },
+  { latitude: 14.662, longitude: 121.082, timestamp: '' },
   targetStop,
   470
 );
@@ -118,19 +127,40 @@ const recoveryReading = offRouteDetector.evaluateLocation(
   targetStop,
   150
 );
-assert(!recoveryReading.isOffRoute, 'Auto-recovers from off-route when user returns within 200m corridor');
+assert(
+  !recoveryReading.isOffRoute,
+  'Auto-recovers from off-route when user returns within 200m corridor'
+);
 
 // ----------------------------------------------------
 // 4. Alert Service Deduplication Tests
 // ----------------------------------------------------
 alertService.reset();
-const firstTrigger = alertService.triggerAlert(0, 'boarding', 'Approaching Stop', '120m away', 'jeepney');
+const firstTrigger = alertService.triggerAlert(
+  0,
+  'boarding',
+  'Approaching Stop',
+  '120m away',
+  'jeepney'
+);
 assert(firstTrigger.isNew, 'First alert trigger marks isNew = true');
 
-const duplicateTrigger = alertService.triggerAlert(0, 'boarding', 'Approaching Stop', '100m away', 'jeepney');
+const duplicateTrigger = alertService.triggerAlert(
+  0,
+  'boarding',
+  'Approaching Stop',
+  '100m away',
+  'jeepney'
+);
 assert(!duplicateTrigger.isNew, 'Duplicate alert for same step and type is cleanly deduplicated');
 
-const differentStepTrigger = alertService.triggerAlert(1, 'alighting', 'Get Ready to Alight', '120m away', 'jeepney');
+const differentStepTrigger = alertService.triggerAlert(
+  1,
+  'alighting',
+  'Get Ready to Alight',
+  '120m away',
+  'jeepney'
+);
 assert(differentStepTrigger.isNew, 'Alert for different step triggers cleanly');
 assert(alertService.getHistory().length === 2, 'Maintains exact chronological alert history');
 
@@ -151,7 +181,7 @@ const walkToBoardStep: JourneyStep = {
 
 // User at 300m -> walking_to_board
 const nav1 = navigationEngine.update({
-  userLocation: { latitude: 14.6510, longitude: 121.0685, timestamp: '' },
+  userLocation: { latitude: 14.651, longitude: 121.0685, timestamp: '' },
   currentStep: walkToBoardStep,
   allSteps: [walkToBoardStep, transitStep],
   stepIndex: 0,
@@ -160,12 +190,15 @@ assert(nav1.status === 'walking_to_board', 'Initial distant walk state is walkin
 
 // User moves to 90m -> approaching_board
 const nav2 = navigationEngine.update({
-  userLocation: { latitude: 14.6530, longitude: 121.0685, timestamp: '' },
+  userLocation: { latitude: 14.653, longitude: 121.0685, timestamp: '' },
   currentStep: walkToBoardStep,
   allSteps: [walkToBoardStep, transitStep],
   stepIndex: 0,
 });
-assert(nav2.status === 'approaching_board', 'Transitions to approaching_board within 120m threshold');
+assert(
+  nav2.status === 'approaching_board',
+  'Transitions to approaching_board within 120m threshold'
+);
 
 // User moves to 30m -> boarding
 const nav3 = navigationEngine.update({
@@ -178,7 +211,7 @@ assert(nav3.status === 'boarding', 'Transitions to boarding within 50m threshold
 
 // In-transit step testing
 const nav4 = navigationEngine.update({
-  userLocation: { latitude: 14.6530, longitude: 121.0600, timestamp: '' },
+  userLocation: { latitude: 14.653, longitude: 121.06, timestamp: '' },
   currentStep: transitStep,
   allSteps: [walkToBoardStep, transitStep],
   stepIndex: 1,

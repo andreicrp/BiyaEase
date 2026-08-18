@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   PanResponder,
-  LayoutChangeEvent,
   ViewStyle,
   Image,
   Text,
@@ -352,7 +351,9 @@ export const MapView: React.FC<MapViewProps> = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_: GestureResponderEvent, gesture: PanResponderGestureState) =>
-        Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3 || (gesture.numberActiveTouches || 0) >= 2,
+        Math.abs(gesture.dx) > 3 ||
+        Math.abs(gesture.dy) > 3 ||
+        (gesture.numberActiveTouches || 0) >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
         (evt as any)?.persist?.();
@@ -401,8 +402,14 @@ export const MapView: React.FC<MapViewProps> = ({
             }
 
             // Proportional smooth scaling: scale = current / initial
-            const scale = Math.max(0.2, Math.min(5.0, currentDistance / gState.initialPinchDistance));
-            const newLngDelta = Math.max(0.002, Math.min(0.4, gState.initialLongitudeDelta / scale));
+            const scale = Math.max(
+              0.2,
+              Math.min(5.0, currentDistance / gState.initialPinchDistance)
+            );
+            const newLngDelta = Math.max(
+              0.002,
+              Math.min(0.4, gState.initialLongitudeDelta / scale)
+            );
             const newLatDelta = Math.max(0.002, Math.min(0.4, gState.initialLatitudeDelta / scale));
 
             let newLat = gState.initialPinchCenterLat;
@@ -551,26 +558,46 @@ export const MapView: React.FC<MapViewProps> = ({
       ))}
 
       {/* 3b. Render Start Pin */}
-      {originCoordinate && (() => {
-        const pt = projectToPixels(originCoordinate);
-        if (pt.x < -60 || pt.x > dimensions.width + 60 || pt.y < -60 || pt.y > dimensions.height + 60) return null;
-        return (
-          <RNView key="origin-start-pin" style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}>
-            <StartEndMarker type="start" label="Start" />
-          </RNView>
-        );
-      })()}
+      {originCoordinate &&
+        (() => {
+          const pt = projectToPixels(originCoordinate);
+          if (
+            pt.x < -60 ||
+            pt.x > dimensions.width + 60 ||
+            pt.y < -60 ||
+            pt.y > dimensions.height + 60
+          )
+            return null;
+          return (
+            <RNView
+              key="origin-start-pin"
+              style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}
+            >
+              <StartEndMarker type="start" label="Start" />
+            </RNView>
+          );
+        })()}
 
       {/* 3c. Render End Pin */}
-      {destinationCoordinate && (() => {
-        const pt = projectToPixels(destinationCoordinate);
-        if (pt.x < -60 || pt.x > dimensions.width + 60 || pt.y < -60 || pt.y > dimensions.height + 60) return null;
-        return (
-          <RNView key="dest-end-pin" style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}>
-            <StartEndMarker type="end" label="End" />
-          </RNView>
-        );
-      })()}
+      {destinationCoordinate &&
+        (() => {
+          const pt = projectToPixels(destinationCoordinate);
+          if (
+            pt.x < -60 ||
+            pt.x > dimensions.width + 60 ||
+            pt.y < -60 ||
+            pt.y > dimensions.height + 60
+          )
+            return null;
+          return (
+            <RNView
+              key="dest-end-pin"
+              style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}
+            >
+              <StartEndMarker type="end" label="End" />
+            </RNView>
+          );
+        })()}
 
       {/* 4. Render Landmark Place Markers */}
       {places.map((place) => {
