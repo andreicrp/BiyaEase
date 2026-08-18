@@ -243,12 +243,12 @@ export const MapView: React.FC<MapViewProps> = ({
     [lng2tileX, lat2tileY, viewportTopLeftX, viewportTopLeftY]
   );
 
-  // Generate visible cartography map tiles using CartoDB Voyager CDN
+  // Generate visible cartography map tiles with a 1-tile buffer margin to eliminate white gaps
   const visibleTiles = useMemo(() => {
-    const minTileX = Math.floor(viewportTopLeftX / TILE_SIZE);
-    const maxTileX = Math.floor((viewportTopLeftX + dimensions.width) / TILE_SIZE);
-    const minTileY = Math.floor(viewportTopLeftY / TILE_SIZE);
-    const maxTileY = Math.floor((viewportTopLeftY + dimensions.height) / TILE_SIZE);
+    const minTileX = Math.floor(viewportTopLeftX / TILE_SIZE) - 1;
+    const maxTileX = Math.floor((viewportTopLeftX + dimensions.width) / TILE_SIZE) + 1;
+    const minTileY = Math.floor(viewportTopLeftY / TILE_SIZE) - 1;
+    const maxTileY = Math.floor((viewportTopLeftY + dimensions.height) / TILE_SIZE) + 1;
 
     const tiles: { key: string; url: string; left: number; top: number }[] = [];
 
@@ -645,7 +645,7 @@ export const MapView: React.FC<MapViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#E8ECF0',
+    backgroundColor: '#E5EAEF',
     overflow: 'hidden',
     position: 'relative',
   },
