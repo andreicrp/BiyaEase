@@ -69,20 +69,26 @@ const DEFAULT_METRO_MANILA_REGION: MapRegion = {
 const TILE_SIZE = 256;
 const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
 
-function extractTouchData(evt: GestureResponderEvent): {
+function extractTouchData(evt?: GestureResponderEvent): {
   count: number;
   distance: number | null;
   midpoint: { x: number; y: number } | null;
 } {
-  const touches = evt?.nativeEvent?.touches;
-  if (!touches || touches.length === 0) {
+  if (!evt) return { count: 0, distance: null, midpoint: null };
+  const nativeEvt = evt.nativeEvent;
+  if (!nativeEvt) return { count: 0, distance: null, midpoint: null };
+  const touches = nativeEvt.touches;
+  if (!touches || !Array.isArray(touches) || touches.length === 0) {
     return { count: 0, distance: null, midpoint: null };
   }
   if (touches.length < 2) {
     return { count: 1, distance: null, midpoint: null };
   }
-  const t0 = touches[0]!;
-  const t1 = touches[1]!;
+  const t0 = touches[0];
+  const t1 = touches[1];
+  if (!t0 || !t1 || typeof t0.pageX !== 'number' || typeof t1.pageX !== 'number') {
+    return { count: touches.length, distance: null, midpoint: null };
+  }
   const dx = t0.pageX - t1.pageX;
   const dy = t0.pageY - t1.pageY;
   return {
@@ -317,11 +323,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
-        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2 || gesture.numberActiveTouches >= 2,
+        Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3 || (gesture.numberActiveTouches || 0) >= 2,
 
       onPanResponderGrant: (evt: GestureResponderEvent) => {
+        evt?.persist?.();
         isGestureActiveRef.current = true;
         const touchData = extractTouchData(evt);
         gestureStateRef.current = {
@@ -334,8 +341,8 @@ export const MapView: React.FC<MapViewProps> = ({
       },
 
       onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
+        evt?.persist?.();
         // Extract all touch properties synchronously BEFORE scheduling requestAnimationFrame
-        // (React Native nullifies/pools synthetic events after synchronous execution)
         const { count, distance: currentDistance, midpoint: currentMid } = extractTouchData(evt);
         const dx = gesture.dx;
         const dy = gesture.dy;
@@ -405,6 +412,16 @@ export const MapView: React.FC<MapViewProps> = ({
           animFrameIdRef.current = null;
         }
         onRegionChange?.(regionRef.current);
+      },
+
+      onPanResponderTerminate: () => {
+        isGestureActiveRef.current = false;
+        gestureStateRef.current.lastDistance = null;
+        gestureStateRef.current.lastMidpoint = null;
+        if (animFrameIdRef.current !== null) {
+          cancelAnimationFrame(animFrameIdRef.current);
+          animFrameIdRef.current = null;
+        }
       },
     })
   ).current;
