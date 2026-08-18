@@ -118,18 +118,21 @@ export const mockSavedPlaces: SavedPlace[] = [
     name: 'Home',
     address: 'Krus na Ligas, Diliman, Quezon City',
     type: 'home',
+    coordinates: { latitude: 14.6468, longitude: 121.0664 },
   },
   {
     id: 'place-02',
     name: 'School',
     address: 'UP Diliman Campus, Quezon City',
     type: 'school',
+    coordinates: { latitude: 14.6538, longitude: 121.0685 },
   },
   {
     id: 'place-03',
     name: 'Work',
     address: 'UP-AyalaLand TechnoHub, Commonwealth Ave, QC',
     type: 'work',
+    coordinates: { latitude: 14.6569, longitude: 121.0569 },
   },
 ];
 

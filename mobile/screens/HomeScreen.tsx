@@ -1,15 +1,23 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { colors } from '../constants/colors';
 import { typography } from '../constants/typography';
 import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { SearchBar } from '../components/common/SearchBar';
 import { SectionHeader } from '../components/common/SectionHeader';
-import { MapPlaceholder } from '../components/maps/MapPlaceholder';
+import { MapView } from '../components/maps/MapView';
 import { TransportCard } from '../components/routes/TransportCard';
 import { FareBadge } from '../components/common/FareBadge';
 import { TimeBadge } from '../components/common/TimeBadge';
+import { transitApiService, ApiTransitStop, ApiPlace } from '../services/transitApiService';
 import {
   mockNearbyTransport,
   mockRecentTrips,
@@ -34,6 +42,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenNearby,
   onOpenProfile,
 }) => {
+  const [nearbyStops, setNearbyStops] = useState<ApiTransitStop[]>([]);
+  const [places, setPlaces] = useState<ApiPlace[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedStop, setSelectedStop] = useState<ApiTransitStop | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<ApiPlace | null>(null);
+
+  const userLocation = { latitude: 14.6538, longitude: 121.0685 }; // UP Diliman / Quezon City
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [stopsData, placesData] = await Promise.all([
+          transitApiService.getNearbyStops(userLocation.latitude, userLocation.longitude, 2000),
+          transitApiService.getPlaces(),
+        ]);
+        if (isMounted) {
+          setNearbyStops(stopsData);
+          setPlaces(placesData.slice(0, 4));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch home map data:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Header Row */}
@@ -109,23 +150,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         </View>
 
-        {/* Nearby Transportation & Map Preview */}
+        {/* Nearby Transportation & Real Map Preview */}
         <View style={styles.section}>
           <SectionHeader
-            title="Nearby Transport"
-            actionLabel="View Map →"
+            title="Nearby Transit & Map"
+            actionLabel="View Full Map →"
             onAction={onOpenNearby}
-            badge="LIVE MOCK"
+            badge="LIVE POSTGIS"
           />
 
-          <MapPlaceholder
-            height={160}
-            origin="UP Diliman"
-            destination="SM North EDSA"
-            showRouteLine={false}
-            showNearbyPins={true}
-            style={styles.miniMap}
-          />
+          <View style={styles.mapCardWrapper}>
+            <MapView
+              height={220}
+              userLocation={userLocation}
+              stops={nearbyStops}
+              places={places}
+              selectedStop={selectedStop}
+              selectedPlace={selectedPlace}
+              onSelectStop={setSelectedStop}
+              onSelectPlace={setSelectedPlace}
+              showControls={true}
+              style={styles.miniMap}
+            />
+            {isLoading && (
+              <View style={styles.mapLoader}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            )}
+          </View>
 
           <View style={styles.nearbyList}>
             {mockNearbyTransport.slice(0, 3).map((item) => (
@@ -293,8 +345,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  miniMap: {
+  mapCardWrapper: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: colors.border,
     marginBottom: spacing.md,
+  },
+  miniMap: {
+    borderRadius: borderRadius.lg,
+  },
+  mapLoader: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    padding: 6,
+    borderRadius: 12,
   },
   nearbyList: {
     marginTop: spacing.xs,

@@ -102,8 +102,8 @@ PHASE 2: Database (Complete)
 PHASE 3: GTFS Importer & Real Transit Data Foundation (Complete)
 └── Import, parse, validate, and store Philippine GTFS feeds and transit schedule data with provenance.
 
-PHASE 4: Map System
-└── Interactive vector maps integration (Google Maps SDK for React Native).
+PHASE 4: Map System & Geospatial Visualization (Complete)
+└── Universal MapView provider abstraction, PostGIS GeoJSON polyline rendering, Stop & Place markers, and camera bounds management.
 
 PHASE 5: Location Search
 └── Place autocomplete, geocoding, and landmark search via Google Places API.

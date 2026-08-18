@@ -7,6 +7,7 @@ import { spacing, borderRadius, shadows } from '../constants/spacing';
 import { AppHeader } from '../components/common/AppHeader';
 import { SearchBar } from '../components/common/SearchBar';
 import { EmptyState } from '../components/common/EmptyState';
+import { transitApiService } from '../services/transitApiService';
 import { MockTransitService } from '../services/mockTransitService';
 import { Destination } from '../types/index';
 
@@ -29,9 +30,40 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onBack, onSelectDest
   const handleSearchChange = async (text: string): Promise<void> => {
     setSearchQuery(text);
     setIsSearching(true);
-    const filtered = await MockTransitService.searchDestinations(text);
-    setResults(filtered);
-    setIsSearching(false);
+
+    try {
+      if (!text.trim()) {
+        const popular = await MockTransitService.getPopularDestinations();
+        setResults(popular);
+        setIsSearching(false);
+        return;
+      }
+
+      // Query real PostGIS places search
+      const apiPlaces = await transitApiService.searchPlaces(text);
+      if (apiPlaces && apiPlaces.length > 0) {
+        setResults(
+          apiPlaces.map((p) => ({
+            id: p.id,
+            name: p.name,
+            area: p.address || 'Metro Manila',
+            category: p.category as Destination['category'],
+            coordinates: {
+              latitude: p.latitude,
+              longitude: p.longitude,
+            },
+          }))
+        );
+      } else {
+        const mockFiltered = await MockTransitService.searchDestinations(text);
+        setResults(mockFiltered);
+      }
+    } catch {
+      const mockFiltered = await MockTransitService.searchDestinations(text);
+      setResults(mockFiltered);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getCategoryIcon = (category: string): string => {

@@ -32,6 +32,7 @@ export interface RouteStep {
   stopsCount?: number;
   landmarkHint?: string;
   instructions: string;
+  coordinates?: Coordinates;
 }
 
 export interface RouteOption {
@@ -65,6 +66,7 @@ export interface SavedPlace {
   address: string;
   type: SavedPlaceType;
   customIcon?: string;
+  coordinates?: Coordinates;
 }
 
 export interface SavedRoute {
