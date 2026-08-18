@@ -17,9 +17,9 @@ async function startServer(): Promise<void> {
     logger.info('ℹ️ DATABASE_URL is not set. Running in decoupled/stateless mode.');
   }
 
-  // Start listening on specified PORT
-  server.listen(env.PORT, () => {
-    logger.info(`🚀 BiyaEase API server is running on port ${env.PORT}`);
+  // Start listening on 0.0.0.0 with dynamic PORT from environment
+  server.listen(env.PORT, '0.0.0.0', () => {
+    logger.info(`🚀 BiyaEase API server is listening on 0.0.0.0:${env.PORT}`);
     logger.info(`   Health check: http://localhost:${env.PORT}/api/health`);
   });
 
@@ -36,7 +36,7 @@ async function startServer(): Promise<void> {
     setTimeout(() => {
       logger.error('Forceful shutdown triggered after timeout.');
       process.exit(1);
-    }, 10000);
+    });
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));

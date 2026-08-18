@@ -1,11 +1,29 @@
 import { getDatabasePool, closeDatabasePool } from './index.js';
 import { runMigrations } from './migrate.js';
+import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
-export async function resetDatabase(): Promise<boolean> {
+export async function resetDatabase(forceProductionReset: boolean = false): Promise<boolean> {
   const pool = getDatabasePool();
   if (!pool) {
-    logger.error('❌ Cannot reset database: Database pool is not available.');
+    logger.error('❌ Cannot reset database: Database pool is not available. Check DATABASE_URL.');
+    return false;
+  }
+
+  // Safety guard against accidental production database drops
+  const isProductionEnv = env.NODE_ENV === 'production';
+  const isRemoteHost =
+    env.DATABASE_URL &&
+    !env.DATABASE_URL.includes('localhost') &&
+    !env.DATABASE_URL.includes('127.0.0.1');
+
+  if ((isProductionEnv || isRemoteHost) && !forceProductionReset) {
+    logger.error(
+      '🚨 PRODUCTION SAFETY GUARD: Refusing to drop database in production/remote environment.'
+    );
+    logger.error(
+      '   If you explicitly intend to reset a remote database, pass `--force-production-reset`.'
+    );
     return false;
   }
 
@@ -24,6 +42,8 @@ export async function resetDatabase(): Promise<boolean> {
       DROP TABLE IF EXISTS services CASCADE;
       DROP TABLE IF EXISTS transit_modes CASCADE;
       DROP TABLE IF EXISTS agencies CASCADE;
+      DROP TABLE IF EXISTS transit_datasets CASCADE;
+      DROP TABLE IF EXISTS transit_sources CASCADE;
       DROP TABLE IF EXISTS schema_migrations CASCADE;
     `);
     logger.info('[RESET] ✅ All tables dropped successfully.');
@@ -39,7 +59,8 @@ export async function resetDatabase(): Promise<boolean> {
 }
 
 if (process.argv[1]?.endsWith('reset.ts') || process.argv[1]?.endsWith('reset.js')) {
-  resetDatabase()
+  const force = process.argv.includes('--force-production-reset');
+  resetDatabase(force)
     .then(async (success) => {
       await closeDatabasePool();
       process.exit(success ? 0 : 1);
