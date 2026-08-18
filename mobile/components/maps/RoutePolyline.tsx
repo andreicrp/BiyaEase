@@ -7,6 +7,7 @@ interface RoutePolylineProps {
   coordinates: Coordinates[];
   color?: string;
   strokeWidth?: number;
+  isDashed?: boolean;
   region: MapRegion;
   width: number;
   height: number;
@@ -19,6 +20,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
   coordinates,
   color = colors.primary,
   strokeWidth = 5,
+  isDashed = false,
   region,
   width,
   height,
@@ -80,6 +82,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
             strokeWidth={strokeWidth + 2}
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeDasharray={isDashed ? '6, 6' : undefined}
           />
           <path
             d={pathData}
@@ -88,6 +91,7 @@ export const RoutePolyline: React.FC<RoutePolylineProps> = ({
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeDasharray={isDashed ? '6, 6' : undefined}
           />
         </svg>
       </RNView>

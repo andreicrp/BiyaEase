@@ -17,7 +17,7 @@ import { PlaceMarker } from './PlaceMarker';
 import { RoutePolyline } from './RoutePolyline';
 import { MapControls } from './MapControls';
 import { StopInfoCard } from './StopInfoCard';
-import { PlaceInfoCard } from './PlaceInfoCard';
+import { StartEndMarker } from './StartEndMarker';
 import { ApiTransitStop, ApiPlace } from '../../services/transitApiService';
 
 const RNView = View as any;
@@ -42,6 +42,7 @@ export interface MapPolylineItem {
   coordinates: Coordinates[];
   color?: string;
   strokeWidth?: number;
+  isDashed?: boolean;
 }
 
 interface MapViewProps {
@@ -49,6 +50,8 @@ interface MapViewProps {
   region?: MapRegion;
   showsUserLocation?: boolean;
   userLocation?: Coordinates;
+  originCoordinate?: Coordinates;
+  destinationCoordinate?: Coordinates;
   stops?: ApiTransitStop[];
   places?: ApiPlace[];
   polylines?: MapPolylineItem[];
@@ -115,6 +118,8 @@ export const MapView: React.FC<MapViewProps> = ({
   region: controlledRegion,
   showsUserLocation = true,
   userLocation = { latitude: 14.6538, longitude: 121.0685 },
+  originCoordinate,
+  destinationCoordinate,
   stops = [],
   places = [],
   polylines = [],
@@ -537,11 +542,34 @@ export const MapView: React.FC<MapViewProps> = ({
           project={projectToPixels}
           color={poly.color}
           strokeWidth={poly.strokeWidth || 5}
+          isDashed={poly.isDashed}
           region={currentRegion}
           width={dimensions.width}
           height={dimensions.height}
         />
       ))}
+
+      {/* 3b. Render Start Pin */}
+      {originCoordinate && (() => {
+        const pt = projectToPixels(originCoordinate);
+        if (pt.x < -60 || pt.x > dimensions.width + 60 || pt.y < -60 || pt.y > dimensions.height + 60) return null;
+        return (
+          <RNView key="origin-start-pin" style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}>
+            <StartEndMarker type="start" label="Start" />
+          </RNView>
+        );
+      })()}
+
+      {/* 3c. Render End Pin */}
+      {destinationCoordinate && (() => {
+        const pt = projectToPixels(destinationCoordinate);
+        if (pt.x < -60 || pt.x > dimensions.width + 60 || pt.y < -60 || pt.y > dimensions.height + 60) return null;
+        return (
+          <RNView key="dest-end-pin" style={[styles.markerAbsolute, { left: pt.x - 24, top: pt.y - 32 }]}>
+            <StartEndMarker type="end" label="End" />
+          </RNView>
+        );
+      })()}
 
       {/* 4. Render Landmark Place Markers */}
       {places.map((place) => {

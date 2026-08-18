@@ -106,7 +106,55 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
     }
   }, [journey, legacyOption]);
 
-  const polyline: MapPolylineItem = React.useMemo(() => {
+  const originCoord = React.useMemo(() => {
+    if (journey?.origin?.latitude && journey?.origin?.longitude) {
+      return { latitude: journey.origin.latitude, longitude: journey.origin.longitude };
+    }
+    return routeCoordinates[0] || { latitude: 14.6538, longitude: 121.0685 };
+  }, [journey, routeCoordinates]);
+
+  const destCoord = React.useMemo(() => {
+    if (journey?.destination?.latitude && journey?.destination?.longitude) {
+      return { latitude: journey.destination.latitude, longitude: journey.destination.longitude };
+    }
+    return routeCoordinates[routeCoordinates.length - 1] || { latitude: 14.6565, longitude: 121.0288 };
+  }, [journey, routeCoordinates]);
+
+  const polylines: MapPolylineItem[] = React.useMemo(() => {
+    if (journey?.segments && journey.segments.length > 0) {
+      return journey.segments.map((seg, idx) => {
+        const segCoords: Coordinates[] = [];
+        if (seg.geometry && Array.isArray(seg.geometry.coordinates)) {
+          seg.geometry.coordinates.forEach(([lng, lat]) => {
+            segCoords.push({ latitude: lat, longitude: lng });
+          });
+        }
+        if (segCoords.length === 0) {
+          if (seg.fromStop) segCoords.push({ latitude: seg.fromStop.latitude, longitude: seg.fromStop.longitude });
+          if (seg.toStop) segCoords.push({ latitude: seg.toStop.latitude, longitude: seg.toStop.longitude });
+        }
+
+        const isWalk = seg.type === 'walking' || seg.mode === 'walking';
+        const color = isWalk
+          ? '#10B981'
+          : seg.mode === 'jeepney'
+            ? '#D97706'
+            : seg.mode === 'bus'
+              ? '#16A34A'
+              : seg.mode === 'mrt' || seg.mode === 'lrt'
+                ? '#7C3AED'
+                : colors.primary;
+
+        return {
+          id: `seg-poly-${idx}`,
+          coordinates: interpolateRoadCorridor(segCoords),
+          color,
+          strokeWidth: isWalk ? 4 : 6,
+          isDashed: isWalk,
+        };
+      });
+    }
+
     const coordsToUse =
       routeCoordinates.length >= 3
         ? routeCoordinates
@@ -120,84 +168,90 @@ export const RouteDetailsScreen: React.FC<RouteDetailsScreenProps> = ({
             { latitude: 14.6565, longitude: 121.0288 },
           ];
 
-    return {
-      id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
-      coordinates: interpolateRoadCorridor(coordsToUse),
-      color: colors.primary,
-      strokeWidth: 5,
-    };
-  }, [journey?.id, legacyOption?.id, routeCoordinates]);
+    return [
+      {
+        id: `poly-${journey?.id || legacyOption?.id || 'route'}`,
+        coordinates: interpolateRoadCorridor(coordsToUse),
+        color: '#16A34A',
+        strokeWidth: 6,
+      },
+    ];
+  }, [journey, legacyOption?.id, routeCoordinates]);
 
-  const getModeEmoji = (mode: JourneyMode | string): string => {
-    switch (mode) {
-      case 'jeepney':
-        return '🚐';
-      case 'mrt':
-        return '🚆';
-      case 'lrt':
-        return '🚈';
-      case 'bus':
-        return '🚌';
-      case 'uvexpress':
-        return '🚐';
-      case 'tricycle':
-        return '🛺';
-      default:
-        return '🚶';
-    }
-  };
+  const originName = journey?.origin?.name || legacyOption?.origin || 'Start';
+  const destName = journey?.destination?.name || legacyOption?.destination || 'End';
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Route Details" onBack={onBack} />
+      <AppHeader title={`${originName} ➔ ${destName}`} onBack={onBack} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Real Map Visualization with Route Polyline and Sequenced Stops */}
+        {/* Real Map Visualization with Start/End Pins & Multi-Segment Polylines */}
         <View style={styles.mapWrapper}>
           <MapView
-            height={220}
-            polylines={[polyline]}
+            height={240}
+            polylines={polylines}
+            originCoordinate={originCoord}
+            destinationCoordinate={destCoord}
             stops={routeStops}
             selectedStop={selectedStop}
             onSelectStop={setSelectedStop}
-            fitCoordinates={polyline.coordinates}
+            fitCoordinates={[originCoord, destCoord, ...(polylines[0]?.coordinates || [])]}
             showControls={true}
             style={styles.map}
           />
         </View>
 
-        {/* Route Summary Metrics Card */}
+        {/* Route Overview & Segment Progress Strip Card */}
         <View style={[styles.summaryCard, shadows.card]}>
-          <View style={styles.badgeRow}>
-            <View style={styles.labelBadge}>
-              <Text style={styles.labelBadgeText}>{labelText}</Text>
-            </View>
-            <Text style={styles.summaryTitle} numberOfLines={1}>
-              {summaryTitle}
-            </Text>
-          </View>
-
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricCaption}>EST. DURATION</Text>
-              <TimeBadge durationMinutes={durationMinutes} size="lg" />
-            </View>
-
-            <View style={styles.metricItem}>
-              <Text style={styles.metricCaption}>TOTAL FARE</Text>
-              <FareBadge fare={totalFare} size="lg" variant="solid" />
-            </View>
-
-            <View style={styles.metricItem}>
-              <Text style={styles.metricCaption}>TRANSFERS</Text>
-              <Text style={styles.metricValue}>
-                {transfersCount === 0 ? 'Direct' : `${transfersCount} transfer`}
+          {/* Header & Mode Progress Line */}
+          <View style={styles.headerInfoRow}>
+            <View style={styles.timeMainRow}>
+              <Text style={styles.timeMainText}>{durationMinutes} min</Text>
+              <Text style={styles.timeSubText}>
+                Arrive ~{Math.round(durationMinutes + 5)} min · {walkingDistance}m walk
               </Text>
             </View>
+            <View style={styles.fareTag}>
+              <Text style={styles.fareTagText}>₱{totalFare}.00</Text>
+            </View>
+          </View>
+
+          {/* Mode Segment Bar Strip matching target design */}
+          <View style={styles.modeStripContainer}>
+            {journey?.segments ? (
+              journey.segments.map((seg, idx) => (
+                <React.Fragment key={`mode-strip-${idx}`}>
+                  <View style={styles.modeItem}>
+                    <Text style={styles.modeIconText}>
+                      {seg.mode === 'jeepney'
+                        ? '🛺'
+                        : seg.mode === 'bus'
+                          ? '🚌'
+                          : seg.mode === 'mrt' || seg.mode === 'lrt'
+                            ? '🚆'
+                            : '🚶'}
+                    </Text>
+                    <Text style={styles.modeLabelText}>
+                      {seg.mode === 'walking' ? '' : seg.mode.toUpperCase()}
+                    </Text>
+                  </View>
+                  {idx < journey.segments.length - 1 && (
+                    <Text style={styles.modeArrow}>›</Text>
+                  )}
+                </React.Fragment>
+              ))
+            ) : (
+              <View style={styles.modeItem}>
+                <Text style={styles.modeIconText}>🚶 › 🚌 Bus › 🛺 Jeep › 🚶</Text>
+              </View>
+            )}
+          </View>
+        </View>
 
             <View style={styles.metricItem}>
               <Text style={styles.metricCaption}>TOTAL WALK</Text>
@@ -306,6 +360,70 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     marginBottom: spacing.lg,
+  },
+  headerInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  timeMainRow: {
+    flex: 1,
+  },
+  timeMainText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  timeSubText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  fareTag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  fareTagText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  modeStripContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardAlt,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  modeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modeIconText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modeLabelText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginLeft: 3,
+  },
+  modeArrow: {
+    fontSize: 14,
+    color: colors.textMuted,
+    marginHorizontal: 6,
+    fontWeight: '700',
   },
   badgeRow: {
     flexDirection: 'row',
