@@ -41,7 +41,10 @@
     "saved:test": "tsx mobile/utils/savedPlacesTestRunner.ts",
     "favorites:test": "tsx mobile/utils/favoriteRoutesTestRunner.ts",
     "auth:test": "tsx server/src/test/authTestRunner.ts",
-    "reports:test": "tsx server/src/test/reportsTestRunner.ts"
+    "reports:test": "tsx server/src/test/reportsTestRunner.ts",
+    "admin:test": "tsx server/src/test/adminTestRunner.ts",
+    "gtfs-admin:test": "tsx server/src/test/gtfsAdminTestRunner.ts",
+    "vehicle:test": "tsx server/src/test/vehicleTestRunner.ts"
   },
   "overrides": {
     "react": "19.1.0",

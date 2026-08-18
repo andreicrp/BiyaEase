@@ -129,14 +129,14 @@ PHASE 11: Authentication & User Profiles (Complete)
 PHASE 12: Community Reports (Complete)
 └── Commuter crowdsourced reports (traffic delays, crowded stations, vehicle availability, road blocks, fare changes), PostGIS spatial proximity queries (ST_DWithin), confirmation tracking, auto-expiration, and map hazard visualization.
 
-PHASE 13: Admin Dashboard
-└── Web interface for system analytics, commuter metrics, and data moderation.
+PHASE 13: Admin Dashboard (Complete)
+└── Web interface in dashboard/ workspace for system metrics analytics, crowdsourced report moderation, user account directory, and system health status.
 
-PHASE 14: Transit Data Management
-└── Admin tools to edit routes, stops, schedules, and fare matrices.
+PHASE 14: Transit Data Management (Complete)
+└── Administrative REST APIs and management tools to inspect/edit GTFS agencies, routes, stop locations, and spatial geometries.
 
-PHASE 15: Real-Time Vehicles
-└── Live vehicle GPS tracking, estimated arrival times (ETA), and WebSockets.
+PHASE 15: Real-Time Vehicles (Complete)
+└── Real-time GPS position telemetry ingestion, PostGIS spatial radar search (ST_DWithin), vehicle bearing/speed tracking, and map live transit rendering.
 
 PHASE 16: Security + Performance
 └── Rate limiting, query optimization, spatial indexing, caching (Redis), penetration testing.
