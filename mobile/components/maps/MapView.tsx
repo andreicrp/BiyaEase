@@ -7,6 +7,8 @@ import {
   ViewStyle,
   Image,
   Text,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { Coordinates, MapRegion, calculateRegionForCoordinates } from '../../utils/geoUtils';
 import { UserLocationMarker } from './UserLocationMarker';
@@ -60,12 +62,22 @@ interface MapViewProps {
 const DEFAULT_METRO_MANILA_REGION: MapRegion = {
   latitude: 14.6538,
   longitude: 121.0685,
-  latitudeDelta: 0.03,
-  longitudeDelta: 0.03,
+  latitudeDelta: 0.035,
+  longitudeDelta: 0.035,
 };
 
 const TILE_SIZE = 256;
 const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
+
+function getTouchDistance(evt: GestureResponderEvent): number | null {
+  const touches = evt.nativeEvent.touches;
+  if (!touches || touches.length < 2) return null;
+  const t0 = touches[0]!;
+  const t1 = touches[1]!;
+  const dx = t0.pageX - t1.pageX;
+  const dy = t0.pageY - t1.pageY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 export const MapView: React.FC<MapViewProps> = ({
   initialRegion = DEFAULT_METRO_MANILA_REGION,
@@ -81,7 +93,7 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectPlace,
   onRegionChange,
   fitCoordinates,
-  height = 300,
+  height,
   style,
   showControls = true,
 }) => {
@@ -131,9 +143,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
   // Compute Web Mercator Zoom level (10 - 18)
   const zoomLevel = useMemo(() => {
-    const delta = currentRegion.longitudeDelta || 0.03;
+    const delta = currentRegion.longitudeDelta || 0.035;
     const z = Math.round(Math.log2(360 / delta));
-    return Math.max(11, Math.min(18, z));
+    return Math.max(10, Math.min(18, z));
   }, [currentRegion.longitudeDelta]);
 
   // Web Mercator calculations
@@ -206,9 +218,9 @@ export const MapView: React.FC<MapViewProps> = ({
     zoomLevel,
   ]);
 
-  // Zoom controls
+  // Zoom button controls
   const handleZoom = (factor: number) => {
-    const nextDelta = Math.max(Math.min(currentRegion.longitudeDelta * factor, 0.25), 0.003);
+    const nextDelta = Math.max(Math.min(currentRegion.longitudeDelta * factor, 0.35), 0.003);
     const nextRegion: MapRegion = {
       ...currentRegion,
       latitudeDelta: nextDelta,
@@ -223,38 +235,72 @@ export const MapView: React.FC<MapViewProps> = ({
       const nextRegion: MapRegion = {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
       };
       setCurrentRegion(nextRegion);
       onRegionChange?.(nextRegion);
     }
   };
 
-  // Smooth Pan Gestures
-  const panStartRef = useRef<{ lat: number; lng: number }>({
-    lat: currentRegion.latitude,
-    lng: currentRegion.longitude,
+  // Two-Finger Pinch to Zoom & One-Finger Pan State
+  const gestureStateRef = useRef<{
+    startLat: number;
+    startLng: number;
+    startDelta: number;
+    initialDistance: number | null;
+  }>({
+    startLat: currentRegion.latitude,
+    startLng: currentRegion.longitude,
+    startDelta: currentRegion.longitudeDelta,
+    initialDistance: null,
   });
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3,
-      onPanResponderGrant: () => {
-        panStartRef.current = {
-          lat: currentRegion.latitude,
-          lng: currentRegion.longitude,
+      onMoveShouldSetPanResponder: (_, gesture: PanResponderGestureState) =>
+        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2 || gesture.numberActiveTouches >= 2,
+
+      onPanResponderGrant: (evt: GestureResponderEvent) => {
+        const dist = getTouchDistance(evt);
+        gestureStateRef.current = {
+          startLat: currentRegion.latitude,
+          startLng: currentRegion.longitude,
+          startDelta: currentRegion.longitudeDelta,
+          initialDistance: dist,
         };
       },
-      onPanResponderMove: (_, gesture) => {
+
+      onPanResponderMove: (evt: GestureResponderEvent, gesture: PanResponderGestureState) => {
+        const touches = evt.nativeEvent.touches;
+
+        // 1. Two-Finger Pinch to Zoom (Expands / Decreases Map Zoom)
+        if (touches && touches.length >= 2) {
+          const currentDistance = getTouchDistance(evt);
+          if (currentDistance && gestureStateRef.current.initialDistance) {
+            const scale = gestureStateRef.current.initialDistance / currentDistance;
+            const newDelta = Math.max(
+              Math.min(gestureStateRef.current.startDelta * scale, 0.35),
+              0.003
+            );
+
+            setCurrentRegion((prev) => ({
+              ...prev,
+              latitudeDelta: newDelta,
+              longitudeDelta: newDelta,
+            }));
+            return;
+          }
+        }
+
+        // 2. One-Finger Pan (Drag across Metro Manila)
         const { width, height: h } = dimensions;
         const dLng = -(gesture.dx / width) * currentRegion.longitudeDelta;
         const dLat = (gesture.dy / h) * currentRegion.latitudeDelta;
 
-        const nextLat = panStartRef.current.lat + dLat;
-        const nextLng = panStartRef.current.lng + dLng;
+        const nextLat = gestureStateRef.current.startLat + dLat;
+        const nextLng = gestureStateRef.current.startLng + dLng;
 
         setCurrentRegion((prev) => ({
           ...prev,
@@ -262,7 +308,9 @@ export const MapView: React.FC<MapViewProps> = ({
           longitude: nextLng,
         }));
       },
+
       onPanResponderRelease: () => {
+        gestureStateRef.current.initialDistance = null;
         onRegionChange?.(currentRegion);
       },
     })
@@ -285,7 +333,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <View
-      style={[styles.container, { height: typeof height === 'number' ? height : undefined }, style]}
+      style={[
+        styles.container,
+        { height: typeof height === 'number' ? height : undefined },
+        height === '100%' && styles.flexFull,
+        style,
+      ]}
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
@@ -405,8 +458,8 @@ export const MapView: React.FC<MapViewProps> = ({
       {showControls && (
         <MapControls
           onRecenter={handleRecenter}
-          onZoomIn={() => handleZoom(0.6)}
-          onZoomOut={() => handleZoom(1.5)}
+          onZoomIn={() => handleZoom(0.65)}
+          onZoomOut={() => handleZoom(1.4)}
         />
       )}
 
@@ -440,6 +493,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8ECF0',
     overflow: 'hidden',
     position: 'relative',
+  },
+  flexFull: {
+    flex: 1,
+    height: '100%',
   },
   markerAbsolute: {
     position: 'absolute',
